@@ -6,8 +6,13 @@ import {
     TouchableOpacity,
     ScrollView,
     Image,
-    Dimensions
+    Dimensions,
+    ActivityIndicator,
+    Alert
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import config from '../config';
+import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SPACING } from '../constants/theme';
 import {
@@ -15,8 +20,12 @@ import {
     FileText,
     CheckCircle2,
     XCircle,
-    Building2
+    Building2,
+    UploadCloud
 } from 'lucide-react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import { useEffect } from 'react';
+import { fetchWithAuth } from '../api/api';
 
 const { width } = Dimensions.get('window');
 
@@ -25,6 +34,137 @@ const ApplyConfirmationScreen = ({ navigation, route }: any) => {
         title: 'Senior Financial Analyst',
         company: 'ACE FINS TECH SOLUTION',
         location: 'Chennai'
+    };
+
+    const [loading, setLoading] = useState(false);
+    const [user, setUser] = useState<any>(null);
+    const [resume, setResume] = useState<any>(null);
+
+    useEffect(() => {
+        loadUserData();
+    }, []);
+
+    const loadUserData = async () => {
+        try {
+            const userData = await AsyncStorage.getItem('user');
+            if (userData) {
+                const parsedUser = JSON.parse(userData);
+                setUser(parsedUser);
+                if (parsedUser.resume_url) {
+                    setResume({
+                        name: parsedUser.resume_original_name || 'My Resume.pdf',
+                        url: parsedUser.resume_url,
+                        date: parsedUser.updated_at
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load user', error);
+        }
+    };
+
+    const handleChangeResume = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+                copyToCacheDirectory: false,
+            });
+
+            if (result.canceled) {
+                return;
+            }
+
+            setLoading(true);
+
+            if (!user) {
+                Alert.alert("Error", "User session not found. Please login again.");
+                setLoading(false);
+                return;
+            }
+
+            const formData = new FormData();
+            const asset = result.assets[0];
+
+            formData.append('resume', {
+                uri: asset.uri,
+                name: asset.name,
+                type: asset.mimeType || 'application/pdf',
+            } as any);
+            formData.append('userId', user.id);
+
+            const response = await fetchWithAuth(`${config.API_BASE_URL}/resume/upload`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                Alert.alert("Success", "Resume updated successfully!");
+                // Update local storage user data
+                user.resume_url = data.resume.url;
+                user.resume_original_name = data.resume.name;
+                user.updated_at = data.resume.date;
+                await AsyncStorage.setItem('user', JSON.stringify(user));
+                setUser({ ...user }); // Force re-render
+
+                setResume({
+                    name: data.resume.name,
+                    url: `${config.API_BASE_URL}${data.resume.url}`,
+                    date: data.resume.date
+                });
+            } else {
+                Alert.alert("Upload Failed", data.message || "Something went wrong");
+            }
+
+        } catch (error) {
+            console.error("Upload error:", error);
+            Alert.alert("Error", "Failed to upload resume");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleApply = async () => {
+        if (!resume) {
+            Alert.alert("Error", "Please upload a resume before applying.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            if (!user) {
+                Alert.alert('Error', 'Please login to apply');
+                navigation.navigate('Login');
+                return;
+            }
+
+            const response = await fetchWithAuth(`${config.API_BASE_URL}/applications/apply`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    job_id: job.id,
+                    user_id: user.id,
+                    applied_via: 'mobile',
+                    resume_name: resume.name,
+                    resume_link: resume.url
+                }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                Alert.alert('Success', 'Application Submitted Successfully!', [
+                    { text: 'OK', onPress: () => navigation.navigate('Home') }
+                ]);
+            } else {
+                Alert.alert('Application Failed', data.message || 'Something went wrong');
+            }
+        } catch (error) {
+            console.error('Apply Error:', error);
+            Alert.alert('Error', 'Network error. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -53,18 +193,31 @@ const ApplyConfirmationScreen = ({ navigation, route }: any) => {
 
                 {/* Resume Section */}
                 <Text style={styles.sectionHeading}>Your Resume</Text>
-                <View style={styles.resumeCard}>
-                    <View style={styles.resumeIconBox}>
-                        <FileText size={24} color={COLORS.white} />
-                    </View>
-                    <View style={styles.resumeInfo}>
-                        <Text style={styles.fileName}>john_doe_resume.pdf</Text>
-                        <Text style={styles.fileMeta}>1.2 MB • Uploaded today</Text>
-                    </View>
-                </View>
 
-                <TouchableOpacity style={styles.changeResumeBtn}>
-                    <Text style={styles.changeResumeText}>Change Resume</Text>
+                {resume ? (
+                    <View style={styles.resumeCard}>
+                        <View style={styles.resumeIconBox}>
+                            <FileText size={24} color={COLORS.white} />
+                        </View>
+                        <View style={styles.resumeInfo}>
+                            <Text style={styles.fileName}>{resume.name}</Text>
+                            <Text style={styles.fileMeta}>Uploaded on {new Date(resume.date).toLocaleDateString()}</Text>
+                        </View>
+                    </View>
+                ) : (
+                    <View style={[styles.resumeCard, { borderStyle: 'dashed', borderWidth: 2, borderColor: COLORS.gray, backgroundColor: 'transparent' }]}>
+                        <View style={[styles.resumeIconBox, { backgroundColor: COLORS.gray }]}>
+                            <UploadCloud size={24} color={COLORS.white} />
+                        </View>
+                        <View style={styles.resumeInfo}>
+                            <Text style={[styles.fileName, { color: COLORS.gray }]}>No Resume Uploaded</Text>
+                            <Text style={styles.fileMeta}>Please upload a resume to apply</Text>
+                        </View>
+                    </View>
+                )}
+
+                <TouchableOpacity style={styles.changeResumeBtn} onPress={handleChangeResume}>
+                    <Text style={styles.changeResumeText}>{resume ? 'Change Resume' : 'Upload Resume'}</Text>
                 </TouchableOpacity>
 
                 {/* Info Box */}
@@ -80,13 +233,14 @@ const ApplyConfirmationScreen = ({ navigation, route }: any) => {
             <View style={styles.footer}>
                 <TouchableOpacity
                     style={styles.submitBtn}
-                    onPress={() => {
-                        // Here you would normally handle the API call
-                        alert('Application Submitted Successfully!');
-                        navigation.navigate('Home');
-                    }}
+                    onPress={handleApply}
+                    disabled={loading}
                 >
-                    <Text style={styles.submitBtnText}>Submit Application</Text>
+                    {loading ? (
+                        <ActivityIndicator color={COLORS.white} />
+                    ) : (
+                        <Text style={styles.submitBtnText}>Submit Application</Text>
+                    )}
                 </TouchableOpacity>
             </View>
         </SafeAreaView>
@@ -118,6 +272,7 @@ const styles = StyleSheet.create({
     scrollContent: {
         paddingHorizontal: SPACING.xl,
         paddingTop: 40,
+        paddingBottom: 150,
     },
     jobBriefSection: {
         flexDirection: 'row',

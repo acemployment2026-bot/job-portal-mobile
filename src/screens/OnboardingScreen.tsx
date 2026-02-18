@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SPACING } from '../constants/theme';
-import { Building2, Landmark, Mountain } from 'lucide-react-native';
+import { Map, MapPin } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -12,12 +12,15 @@ const OnboardingScreen = ({ navigation }: any) => {
 
             {/* Illustration Area */}
             <View style={styles.illustrationContainer}>
-                <View style={styles.buildings}>
-                    <Building2 size={120} color={COLORS.primary} strokeWidth={1} />
-                    <Landmark size={80} color={COLORS.primary} strokeWidth={1} style={{ marginLeft: -20 }} />
-                    <Mountain size={60} color={COLORS.primary} strokeWidth={1} style={{ marginLeft: -10, marginBottom: -10 }} />
+                <View style={styles.mapContainer}>
+                    <Map size={160} color={COLORS.primary} strokeWidth={0.8} />
+                    <View style={styles.pinContainer}>
+                        <MapPin size={48} color="#FF1E1E" fill="#FF1E1E" />
+                    </View>
                 </View>
-                <View style={styles.cityLine} />
+                {/* Decorative circles */}
+                <View style={[styles.circle, styles.circle1]} />
+                <View style={[styles.circle, styles.circle2]} />
             </View>
 
             {/* Text Context */}
@@ -26,13 +29,6 @@ const OnboardingScreen = ({ navigation }: any) => {
                 <Text style={styles.description}>
                     Discover premium opportunities at the heart of South India's tech hub.
                 </Text>
-
-                {/* Indicators */}
-                <View style={styles.indicatorContainer}>
-                    <View style={[styles.indicator, styles.activeIndicator]} />
-                    <View style={styles.indicator} />
-                    <View style={styles.indicator} />
-                </View>
             </View>
 
             {/* Buttons */}
@@ -59,60 +55,65 @@ const OnboardingScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        backgroundColor: COLORS.white,
     },
     illustrationContainer: {
         flex: 1.2,
         justifyContent: 'center',
         alignItems: 'center',
+        position: 'relative',
     },
-    buildings: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        marginBottom: 40,
+    mapContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10,
     },
-    cityLine: {
-        width: width * 0.8,
-        height: 2,
-        backgroundColor: COLORS.primary,
-        opacity: 0.1,
+    pinContainer: {
+        position: 'absolute',
+        top: '25%',
+        shadowColor: '#FF1E1E',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    circle: {
+        position: 'absolute',
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: COLORS.primary,
+        opacity: 0.05,
+    },
+    circle1: {
+        width: 300,
+        height: 300,
+    },
+    circle2: {
+        width: 400,
+        height: 400,
     },
     content: {
-        flex: 1,
+        flex: 0.8,
         alignItems: 'center',
         paddingHorizontal: SPACING.xl,
+        justifyContent: 'center',
     },
     title: {
-        fontSize: SIZES.h1,
+        fontSize: 36,
         fontWeight: '800',
         color: COLORS.primary,
         textAlign: 'center',
-        marginBottom: SPACING.md,
-        lineHeight: 40,
+        marginBottom: 16,
+        lineHeight: 44,
+        letterSpacing: -1,
     },
     description: {
-        fontSize: SIZES.body + 1,
+        fontSize: 16,
         color: COLORS.textMuted,
         textAlign: 'center',
-        lineHeight: 24,
-        marginBottom: SPACING.xl,
-    },
-    indicatorContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 20,
-    },
-    indicator: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: COLORS.border,
-        marginHorizontal: 4,
-    },
-    activeIndicator: {
-        width: 24,
-        backgroundColor: COLORS.secondary,
+        lineHeight: 26,
+        paddingHorizontal: 20,
+        fontWeight: '500',
     },
     footer: {
         padding: SPACING.xl,
@@ -121,27 +122,28 @@ const styles = StyleSheet.create({
     primaryButton: {
         backgroundColor: COLORS.primary,
         height: 60,
-        borderRadius: 30,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 4,
         shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.3,
-        shadowRadius: 8,
+        shadowRadius: 16,
     },
     buttonText: {
         color: COLORS.white,
-        fontSize: SIZES.body,
+        fontSize: 16,
         fontWeight: '700',
+        letterSpacing: 0.5,
     },
     secondaryButton: {
-        marginTop: SPACING.lg,
+        marginTop: 20,
         alignItems: 'center',
     },
     secondaryButtonText: {
         color: COLORS.textMuted,
-        fontSize: SIZES.body,
+        fontSize: 14,
         fontWeight: '600',
     },
 });

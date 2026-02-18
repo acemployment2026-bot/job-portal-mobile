@@ -29,9 +29,11 @@ const OtpLoginScreen = ({ navigation }: any) => {
         <SafeAreaView style={styles.container}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                style={{ flex: 1 }}
             >
-                <View style={styles.fixedContent}>
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                >
                     {/* Header */}
                     <View style={styles.header}>
                         <View style={styles.logoBox}>
@@ -103,7 +105,7 @@ const OtpLoginScreen = ({ navigation }: any) => {
                             <Text style={styles.registerText}>Create New Account</Text>
                         </TouchableOpacity>
                     </View>
-                </View>
+                </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -114,11 +116,11 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: COLORS.background,
     },
-    fixedContent: {
-        flex: 1,
+    scrollContent: {
+        flexGrow: 1,
         paddingHorizontal: SPACING.xl,
         paddingTop: Platform.OS === 'ios' ? 40 : 20,
-        paddingBottom: 20,
+        paddingBottom: 50,
         justifyContent: 'space-between',
     },
     header: {

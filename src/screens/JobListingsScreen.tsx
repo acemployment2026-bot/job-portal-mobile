@@ -1,12 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     StyleSheet,
     View,
     Text,
     TouchableOpacity,
     ScrollView,
-    TextInput
+    TextInput,
+    ActivityIndicator,
+    Platform,
+    RefreshControl
 } from 'react-native';
+import config from '../config';
+import { fetchWithAuth } from '../api/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SPACING } from '../constants/theme';
 import {
@@ -25,38 +30,47 @@ import {
 } from 'lucide-react-native';
 
 const JobListingsScreen = ({ navigation }: any) => {
-    const jobs = [
-        {
-            id: 1,
-            title: 'Senior iOS Developer',
-            company: 'ACE FINS TECH SOLUTION',
-            location: 'Velachery, Chennai',
-            salary: '₹80k - 1.2L',
-            type: 'Full-time',
-            modality: 'On-site',
-            isNew: true
-        },
-        {
-            id: 2,
-            title: 'Financial Analyst',
-            company: 'ACE FINS TECH SOLUTION',
-            location: 'T Nagar, Chennai',
-            salary: '₹50k - 75k',
-            type: 'Full-time',
-            modality: 'Hybrid',
-            isNew: false
-        },
-        {
-            id: 3,
-            title: 'Product Manager',
-            company: 'ACE FINS TECH SOLUTION',
-            location: 'OMR, Chennai',
-            salary: '₹90k - 1.5L',
-            type: 'Full-time',
-            modality: 'On-site',
-            isNew: false
+    const [jobs, setJobs] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+
+    useEffect(() => {
+        fetchJobs();
+    }, []);
+
+    const fetchJobs = async () => {
+        try {
+            const url = `${config.API_BASE_URL}/jobs`;
+            console.log('Fetching Jobs URL:', url);
+            const response = await fetchWithAuth(url);
+
+            const textFn = await response.text();
+            try {
+                const data = JSON.parse(textFn);
+                if (response.ok) {
+                    setJobs(data);
+                } else {
+                    console.error('Server error jobs:', data);
+                }
+            } catch (e) {
+                console.error('JSON Parse Error Jobs:', e);
+                console.log('Response returned HTML/Text:', textFn);
+            }
+        } catch (error: any) {
+            console.error('Error fetching jobs:', error);
+            if (error.message === 'Network request failed') {
+                // Potentially a firewall issue
+            }
+        } finally {
+            setLoading(false);
         }
-    ];
+    };
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchJobs();
+        setRefreshing(false);
+    }, []);
 
     return (
         <SafeAreaView style={styles.container}>
@@ -71,7 +85,13 @@ const JobListingsScreen = ({ navigation }: any) => {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
+                }
+            >
                 {/* Filters */}
                 <View style={styles.filterRow}>
                     <TouchableOpacity style={styles.filterBtn}>
@@ -91,47 +111,51 @@ const JobListingsScreen = ({ navigation }: any) => {
                 <Text style={styles.categoryLabel}>CHENNAI CAREERS</Text>
 
                 {/* Job List */}
-                {jobs.map((job) => (
-                    <View key={job.id} style={styles.jobCard}>
-                        <View style={styles.jobCardHeader}>
-                            <View>
-                                <Text style={styles.jobTitle}>{job.title}</Text>
-                                <Text style={styles.companyName}>{job.company}</Text>
-                            </View>
-                            {job.isNew && (
-                                <View style={styles.newBadge}>
-                                    <Text style={styles.newBadgeText}>NEW</Text>
+                {loading ? (
+                    <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 50 }} />
+                ) : (
+                    jobs.map((job) => (
+                        <View key={job.id} style={styles.jobCard}>
+                            <View style={[styles.jobCardHeader, { justifyContent: 'space-between', alignItems: 'center' }]}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.jobTitle}>{job.title}</Text>
+                                    <Text style={styles.companyName}>{job.company}</Text>
                                 </View>
-                            )}
-                        </View>
+                                {((new Date().getTime() - new Date(job.created_at).getTime()) / (1000 * 3600 * 24) < 7) && (
+                                    <View style={styles.newBadge}>
+                                        <Text style={styles.newBadgeText}>NEW</Text>
+                                    </View>
+                                )}
+                            </View>
 
-                        <View style={styles.jobInfoGrid}>
-                            <View style={styles.infoRow}>
-                                <MapPin size={16} color={COLORS.gray} />
-                                <Text style={styles.infoText}>{job.location}</Text>
+                            <View style={styles.jobInfoGrid}>
+                                <View style={styles.infoRow}>
+                                    <MapPin size={16} color={COLORS.gray} />
+                                    <Text style={styles.infoText}>{job.location?.split(',')[0]}</Text>
+                                </View>
+                                <View style={styles.infoRow}>
+                                    <DollarSign size={16} color={COLORS.gray} />
+                                    <Text style={styles.infoText}>{job.salary}</Text>
+                                </View>
+                                <View style={styles.infoRow}>
+                                    <Briefcase size={16} color={COLORS.gray} />
+                                    <Text style={styles.infoText}>{job.type}</Text>
+                                </View>
+                                <View style={styles.infoRow}>
+                                    <HomeIcon size={16} color={COLORS.gray} />
+                                    <Text style={styles.infoText}>{job.modality || 'On-site'}</Text>
+                                </View>
                             </View>
-                            <View style={styles.infoRow}>
-                                <DollarSign size={16} color={COLORS.gray} />
-                                <Text style={styles.infoText}>{job.salary}</Text>
-                            </View>
-                            <View style={styles.infoRow}>
-                                <Briefcase size={16} color={COLORS.gray} />
-                                <Text style={styles.infoText}>{job.type}</Text>
-                            </View>
-                            <View style={styles.infoRow}>
-                                <HomeIcon size={16} color={COLORS.gray} />
-                                <Text style={styles.infoText}>{job.modality}</Text>
-                            </View>
-                        </View>
 
-                        <TouchableOpacity
-                            style={styles.applyBtn}
-                            onPress={() => navigation.navigate('JobDetails', { job })}
-                        >
-                            <Text style={styles.applyBtnText}>Apply Now</Text>
-                        </TouchableOpacity>
-                    </View>
-                ))}
+                            <TouchableOpacity
+                                style={styles.applyBtn}
+                                onPress={() => navigation.navigate('JobDetails', { job })}
+                            >
+                                <Text style={styles.applyBtnText}>Apply Now</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ))
+                )}
             </ScrollView>
         </SafeAreaView>
     );
@@ -140,31 +164,37 @@ const JobListingsScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        backgroundColor: COLORS.white,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: SPACING.xl,
-        paddingVertical: SPACING.md,
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+        paddingBottom: 20,
         backgroundColor: COLORS.white,
+        zIndex: 10,
     },
     backBtn: {
-        width: 40,
-        height: 40,
+        width: 44,
+        height: 44,
         justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 22,
+        backgroundColor: COLORS.inputBg,
     },
     headerTitle: {
-        fontSize: SIZES.h2,
+        fontSize: 20,
         fontWeight: '800',
         color: COLORS.primary,
+        letterSpacing: -0.5,
     },
     searchBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#F1F3F5',
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: COLORS.inputBg,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -175,107 +205,105 @@ const styles = StyleSheet.create({
     filterRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: 15,
-        marginBottom: 20,
+        marginTop: 10,
+        marginBottom: 25,
     },
     filterBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: COLORS.white,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: COLORS.primary,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 14,
+        borderWidth: 1.5,
+        borderColor: COLORS.lightGray,
     },
     filterText: {
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: '700',
         color: COLORS.primary,
         marginRight: 6,
     },
     categoryLabel: {
-        fontSize: 10,
-        fontWeight: '800',
-        color: COLORS.gray,
-        letterSpacing: 2,
+        fontSize: 12,
+        fontWeight: '700',
+        color: COLORS.textMuted,
+        letterSpacing: 1.5,
         marginBottom: 20,
-        marginTop: 10,
+        textTransform: 'uppercase',
     },
     jobCard: {
         backgroundColor: COLORS.white,
         borderRadius: 24,
         padding: 24,
         marginBottom: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 15,
-        elevation: 3,
+        borderWidth: 1.5,
+        borderColor: COLORS.lightGray,
     },
     jobCardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: SPACING.md,
+        marginBottom: 20,
     },
     jobTitle: {
-        fontSize: SIZES.h2,
+        fontSize: 18,
         fontWeight: '800',
         color: COLORS.primary,
-        marginBottom: 4,
+        marginBottom: 6,
     },
     companyName: {
-        fontSize: SIZES.body,
+        fontSize: 14,
         fontWeight: '600',
-        color: COLORS.primary,
-        opacity: 0.8,
+        color: COLORS.textMuted,
     },
     newBadge: {
-        backgroundColor: '#F1F3F5',
+        backgroundColor: COLORS.inputBg,
         paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 6,
+        paddingVertical: 6,
+        borderRadius: 8,
     },
     newBadgeText: {
         fontSize: 10,
         fontWeight: '800',
         color: COLORS.primary,
+        letterSpacing: 0.5,
     },
     jobInfoGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        marginBottom: 20,
+        marginBottom: 24,
     },
     infoRow: {
         width: '50%',
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 10,
+        marginBottom: 12,
     },
     infoText: {
-        fontSize: SIZES.small,
+        fontSize: 13,
         color: COLORS.primary,
         opacity: 0.7,
         marginLeft: 8,
         fontWeight: '600',
     },
     applyBtn: {
-        backgroundColor: '#FF1E1E',
-        height: 50,
-        borderRadius: 15,
+        backgroundColor: COLORS.primary,
+        height: 56,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#FF1E1E',
+        shadowColor: COLORS.primary,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.2,
         shadowRadius: 8,
         elevation: 4,
     },
     applyBtnText: {
         color: COLORS.white,
-        fontSize: SIZES.body,
+        fontSize: 14,
         fontWeight: '700',
+        letterSpacing: 0.5,
     }
 });
 

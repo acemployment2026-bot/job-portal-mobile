@@ -7,9 +7,14 @@ import {
     TouchableOpacity,
     ScrollView,
     Image,
-    Dimensions
+    Dimensions,
+    RefreshControl
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useState, useEffect, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import config from '../config';
+import { fetchWithAuth } from '../api/api';
 import { COLORS, SIZES, SPACING } from '../constants/theme';
 import {
     Search,
@@ -30,6 +35,65 @@ import {
 const { width } = Dimensions.get('window');
 
 const HomeScreen = ({ navigation }: any) => {
+    const [user, setUser] = useState<any>(null);
+    const [stats, setStats] = useState<any>(null);
+    const [recommendedJobs, setRecommendedJobs] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const loadData = async () => {
+        try {
+            const userData = await AsyncStorage.getItem('user');
+            if (userData) {
+                const parsedUser = JSON.parse(userData);
+                setUser(parsedUser);
+                await fetchDashboardData(parsedUser.id);
+            }
+        } catch (error) {
+            console.error('Failed to load user', error);
+        }
+    };
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await loadData();
+        setRefreshing(false);
+    }, []);
+
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    const fetchDashboardData = async (userId: string) => {
+        try {
+            const url = `${config.API_BASE_URL}/dashboard/candidate/${userId}`;
+            // console.log('Fetching URL:', url); // Removed verbose logging
+            const response = await fetchWithAuth(url);
+
+            const textFn = await response.text();
+            try {
+                const data = JSON.parse(textFn);
+                if (response.ok) {
+                    setStats(data.stats);
+                    setRecommendedJobs(data.recommendedJobs || []);
+                } else {
+                    console.error('Server error:', data);
+                }
+            } catch (e) {
+                console.error('JSON Parse Error:', e);
+                console.log('Response returned HTML/Text:', textFn);
+            }
+        } catch (error: any) {
+            console.error('Error fetching dashboard data:', error);
+            if (error.message === 'Network request failed') {
+                // Handle network failure (potential firewall issue or wrong IP)
+                // console.warn('Network request failed. Check firewall/IP settings.');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             {/* Header */}
@@ -39,16 +103,25 @@ const HomeScreen = ({ navigation }: any) => {
                         <MapPin size={14} color={COLORS.primary} />
                         <Text style={styles.locationText}>CHENNAI, TAMIL NADU</Text>
                     </View>
-                    <Text style={styles.greeting}>Hi Karthik</Text>
+                    <Text style={styles.greeting}>Hi {user?.full_name?.split(' ')[0] || 'User'}</Text>
                 </View>
-                <TouchableOpacity style={styles.avatarContainer}>
+                <TouchableOpacity
+                    style={styles.avatarContainer}
+                    onPress={() => navigation.navigate('ProfileTab')}
+                >
                     <View style={styles.avatar}>
                         <User size={24} color={COLORS.primary} />
                     </View>
                 </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
+                }
+            >
                 {/* Search Bar */}
                 <View style={styles.searchContainer}>
                     <Search size={20} color={COLORS.gray} style={styles.searchIcon} />
@@ -68,117 +141,81 @@ const HomeScreen = ({ navigation }: any) => {
                 </View>
 
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.recommendedScroll}>
-                    <TouchableOpacity
-                        style={styles.jobCard}
-                        onPress={() => navigation.navigate('JobsTab', {
-                            screen: 'JobDetails',
-                            params: {
-                                job: {
-                                    title: 'Software Engineer',
-                                    company: 'TCS',
-                                    location: 'OMR, Chennai',
-                                    salary: '₹60k - 1L',
-                                    type: 'Full-time'
-                                }
-                            }
-                        })}
-                    >
-                        <View style={styles.jobCardTop}>
-                            <View style={[styles.companyLogo, { backgroundColor: '#004B49' }]}>
-                                <Text style={styles.logoText}>TCS</Text>
-                            </View>
-                            <TouchableOpacity>
-                                <Bookmark size={20} color={COLORS.gray} />
+                    {recommendedJobs.length > 0 ? (
+                        recommendedJobs.map((job) => (
+                            <TouchableOpacity
+                                key={job.id}
+                                style={styles.jobCard}
+                                onPress={() => navigation.navigate('JobsTab', {
+                                    screen: 'JobDetails',
+                                    params: { job }
+                                })}
+                            >
+                                <View style={styles.jobCardTop}>
+                                    <View style={[styles.companyLogo, { backgroundColor: COLORS.primary }]}>
+                                        <Text style={styles.logoText}>{job.company?.substring(0, 2).toUpperCase()}</Text>
+                                    </View>
+                                    <TouchableOpacity>
+                                        <Bookmark size={20} color={COLORS.gray} />
+                                    </TouchableOpacity>
+                                </View>
+                                <Text style={styles.jobTitle} numberOfLines={1}>{job.title}</Text>
+                                <Text style={styles.companyName} numberOfLines={1}>{job.company}</Text>
+                                <View style={styles.tagRow}>
+                                    <View style={[styles.tag, { backgroundColor: '#F1F3F5' }]}>
+                                        <Text style={[styles.tagText, { color: COLORS.primary }]} numberOfLines={1}>
+                                            {job.location?.split(',')[0]}
+                                        </Text>
+                                    </View>
+                                    <View style={[styles.tag, { backgroundColor: '#FFF9DB' }]}>
+                                        <Text style={[styles.tagText, { color: '#F59F00' }]}>{job.type || 'Full-time'}</Text>
+                                    </View>
+                                </View>
                             </TouchableOpacity>
-                        </View>
-                        <Text style={styles.jobTitle}>Software Engineer</Text>
-                        <Text style={styles.companyName}>TCS</Text>
-                        <View style={styles.tagRow}>
-                            <View style={[styles.tag, { backgroundColor: '#FFEBEB' }]}>
-                                <Text style={[styles.tagText, { color: '#FF1E1E' }]}>OMR, CHENNAI</Text>
-                            </View>
-                            <View style={[styles.tag, { backgroundColor: '#F1F3F5' }]}>
-                                <Text style={[styles.tagText, { color: COLORS.primary }]}>FULL-TIME</Text>
-                            </View>
-                        </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={styles.jobCard}
-                        onPress={() => navigation.navigate('JobsTab', {
-                            screen: 'JobDetails',
-                            params: {
-                                job: {
-                                    title: 'Product Manager',
-                                    company: 'Zoho',
-                                    location: 'Guduvanchery, Chennai',
-                                    salary: '₹80k - 1.2L',
-                                    type: 'Full-time'
-                                }
-                            }
-                        })}
-                    >
-                        <View style={styles.jobCardTop}>
-                            <View style={[styles.companyLogo, { backgroundColor: '#006B44' }]}>
-                                <Text style={styles.logoText}>ZOHO</Text>
-                            </View>
-                            <TouchableOpacity>
-                                <Bookmark size={20} color={COLORS.gray} />
-                            </TouchableOpacity>
-                        </View>
-                        <Text style={styles.jobTitle}>Product Manager</Text>
-                        <Text style={styles.companyName}>Zoho</Text>
-                        <View style={styles.tagRow}>
-                            <View style={[styles.tag, { backgroundColor: '#FFF9DB' }]}>
-                                <Text style={[styles.tagText, { color: '#F59F00' }]}>GUDUVANCHERY</Text>
-                            </View>
-                        </View>
-                    </TouchableOpacity>
+                        ))
+                    ) : (
+                        <Text style={{ marginLeft: 20, color: COLORS.gray }}>No recommended jobs found</Text>
+                    )}
                 </ScrollView>
 
-                {/* Popular Companies */}
-                <Text style={styles.sectionTitle}>Popular Companies</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.companiesScroll}>
-                    {[
-                        { name: 'Zoho', color: '#006B44' },
-                        { name: 'Freshworks', color: '#446B2C' },
-                        { name: 'TCS OMR', color: '#004B49' },
-                        { name: 'Accenture', color: '#444444' }
-                    ].map((item, index) => (
-                        <View key={index} style={styles.companyItem}>
-                            <View style={[styles.companyCircle, { backgroundColor: item.color }]}>
-                                <Text style={styles.circleText}>{item.name[0]}</Text>
-                            </View>
-                            <Text style={styles.companyLabel}>{item.name}</Text>
-                        </View>
-                    ))}
-                </ScrollView>
 
                 {/* Quick Links */}
                 <Text style={styles.sectionTitle}>Quick Links</Text>
                 <View style={styles.quickLinksGrid}>
-                    <TouchableOpacity style={styles.linkCard}>
+                    <TouchableOpacity
+                        style={styles.linkCard}
+                        onPress={() => navigation.navigate('ProfileTab')}
+                    >
                         <View style={styles.linkIconBox}>
                             <User size={24} color={COLORS.primary} />
                         </View>
                         <Text style={styles.linkLabel}>Profile</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.linkCard}>
+                    <TouchableOpacity
+                        style={styles.linkCard}
+                        onPress={() => navigation.navigate('Resume')}
+                    >
                         <View style={styles.linkIconBox}>
                             <FileText size={24} color={COLORS.primary} />
                         </View>
                         <Text style={styles.linkLabel}>Resume</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.linkCard}>
+                    <TouchableOpacity
+                        style={styles.linkCard}
+                        onPress={() => navigation.navigate('SavedTab')}
+                    >
                         <View style={styles.linkIconBox}>
                             <Briefcase size={24} color={COLORS.primary} />
                         </View>
                         <Text style={styles.linkLabel}>Applications</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.linkCard}>
+                    <TouchableOpacity
+                        style={styles.linkCard}
+                        onPress={() => navigation.navigate('Notifications')}
+                    >
                         <View style={styles.linkIconBox}>
                             <Bell size={24} color={COLORS.primary} />
                         </View>
@@ -199,194 +236,209 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: SPACING.xl,
-        paddingVertical: SPACING.md,
+        paddingHorizontal: SPACING.lg,
+        paddingTop: SPACING.md,
+        paddingBottom: SPACING.sm,
     },
     locationRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 4,
+        marginBottom: 8,
     },
     locationText: {
-        fontSize: 10,
+        fontSize: 12,
         fontWeight: '700',
         color: COLORS.primary,
-        marginLeft: 4,
-        opacity: 0.6,
+        marginLeft: 6,
+        opacity: 0.5,
+        letterSpacing: 0.5,
     },
     greeting: {
-        fontSize: SIZES.h1,
+        fontSize: 28,
         fontWeight: '800',
         color: COLORS.primary,
+        letterSpacing: -0.5,
     },
     avatarContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#F1F3F5',
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: COLORS.lightGray,
         justifyContent: 'center',
         alignItems: 'center',
     },
     avatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: COLORS.white,
     },
     scrollContent: {
-        paddingHorizontal: SPACING.xl,
-        paddingBottom: 100,
+        paddingHorizontal: SPACING.lg,
+        paddingBottom: 120,
     },
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F1F3F5',
-        borderRadius: 25,
-        paddingHorizontal: 15,
-        marginTop: 20,
-        marginBottom: 30,
-        height: 50,
+        backgroundColor: COLORS.inputBg,
+        borderRadius: 20,
+        paddingHorizontal: 20,
+        marginTop: 25,
+        marginBottom: 35,
+        height: 56,
     },
     searchIcon: {
-        marginRight: 10,
+        marginRight: 12,
+        opacity: 0.5,
     },
     searchInput: {
         flex: 1,
         fontSize: SIZES.body,
-        color: COLORS.text,
+        color: COLORS.primary,
+        fontWeight: '500',
     },
     sectionHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 15,
+        alignItems: 'flex-end',
+        marginBottom: 20,
     },
     sectionTitle: {
-        fontSize: SIZES.h2,
+        fontSize: 20,
         fontWeight: '800',
         color: COLORS.primary,
-        marginBottom: 15,
-        marginTop: 10,
+        letterSpacing: -0.5,
     },
     seeAll: {
-        color: '#FF1E1E',
+        color: COLORS.secondary,
         fontWeight: '700',
-        fontSize: SIZES.small,
+        fontSize: 14,
+        letterSpacing: 0.5,
     },
     recommendedScroll: {
-        marginBottom: 30,
-        marginLeft: -SPACING.xl,
-        paddingLeft: SPACING.xl,
+        marginBottom: 40,
+        marginLeft: -SPACING.lg, // align with screen edge scroll
+        paddingLeft: SPACING.lg,
     },
     jobCard: {
-        width: width * 0.7,
+        width: width * 0.75,
         backgroundColor: COLORS.white,
         borderRadius: 24,
-        padding: 20,
-        marginRight: 15,
-        borderWidth: 1,
-        borderColor: '#F1F3F5',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
+        padding: 24,
+        marginRight: 20,
+        borderWidth: 1.5,
+        borderColor: COLORS.lightGray,
+        // shadowColor: COLORS.primary,
+        // shadowOffset: { width: 0, height: 10 },
+        // shadowOpacity: 0.05,
+        // shadowRadius: 20,
+        // elevation: 2,
     },
     jobCardTop: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: 15,
+        marginBottom: 20,
     },
     companyLogo: {
         width: 50,
         height: 50,
-        borderRadius: 12,
+        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
     },
     logoText: {
         color: COLORS.white,
         fontWeight: '900',
-        fontSize: 10,
+        fontSize: 14,
     },
     jobTitle: {
-        fontSize: SIZES.body + 2,
+        fontSize: 18,
         fontWeight: '800',
         color: COLORS.primary,
-        marginBottom: 4,
+        marginBottom: 6,
+        lineHeight: 24,
     },
     companyName: {
-        fontSize: SIZES.body,
-        color: COLORS.primary,
-        opacity: 0.6,
-        marginBottom: 15,
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.textMuted,
+        marginBottom: 20,
     },
     tagRow: {
         flexDirection: 'row',
     },
     tag: {
         paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 8,
-        marginRight: 8,
+        paddingVertical: 8,
+        borderRadius: 10,
+        marginRight: 10,
     },
     tagText: {
-        fontSize: 10,
-        fontWeight: '800',
+        fontSize: 11,
+        fontWeight: '700',
+        letterSpacing: 0.5,
     },
     companiesScroll: {
-        marginBottom: 30,
+        marginBottom: 40,
+        marginLeft: -SPACING.lg,
+        paddingLeft: SPACING.lg,
     },
     companyItem: {
         alignItems: 'center',
-        marginRight: 20,
+        marginRight: 24,
     },
     companyCircle: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
+        width: 70,
+        height: 70,
+        borderRadius: 35,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 10,
+        backgroundColor: COLORS.inputBg,
     },
     circleText: {
         color: COLORS.white,
-        fontSize: SIZES.h2,
+        fontSize: 24,
         fontWeight: '800',
     },
     companyLabel: {
-        fontSize: SIZES.small,
+        fontSize: 12,
         fontWeight: '600',
         color: COLORS.primary,
+        textAlign: 'center',
     },
     quickLinksGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
+        marginTop: 10,
     },
     linkCard: {
         width: '48%',
-        backgroundColor: COLORS.white,
-        padding: 20,
+        backgroundColor: COLORS.inputBg,
+        padding: 24,
         borderRadius: 24,
         alignItems: 'center',
-        marginBottom: SPACING.md,
-        borderWidth: 1,
-        borderColor: '#F1F3F5',
+        marginBottom: 16,
     },
     linkIconBox: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#F1F3F5',
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: COLORS.white,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 10,
+        marginBottom: 12,
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
     },
     linkLabel: {
-        fontSize: SIZES.body,
+        fontSize: 14,
         fontWeight: '700',
         color: COLORS.primary,
     }

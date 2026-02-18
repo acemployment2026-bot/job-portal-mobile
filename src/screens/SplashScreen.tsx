@@ -2,13 +2,36 @@ import React, { useEffect } from 'react';
 import { StyleSheet, View, Text, ActivityIndicator } from 'react-native';
 import { COLORS, SIZES, SPACING } from '../constants/theme';
 import { ShieldCheck } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SplashScreen = ({ navigation }: any) => {
     useEffect(() => {
-        const timer = setTimeout(() => {
-            navigation.replace('Onboarding');
-        }, 2500);
-        return () => clearTimeout(timer);
+        const checkAuth = async () => {
+            try {
+                // Wait for a minimum time to show splash
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                const token = await AsyncStorage.getItem('token');
+                const userData = await AsyncStorage.getItem('user');
+
+                if (token && userData) {
+                    const user = JSON.parse(userData);
+                    if (user.role === 'user') {
+                        navigation.replace('Main');
+                    } else {
+                        // If token exists but not user role, clear and go to Onboarding
+                        await AsyncStorage.clear();
+                        navigation.replace('Onboarding');
+                    }
+                } else {
+                    navigation.replace('Onboarding');
+                }
+            } catch (error) {
+                navigation.replace('Onboarding');
+            }
+        };
+
+        checkAuth();
     }, [navigation]);
 
     return (
@@ -39,25 +62,26 @@ const styles = StyleSheet.create({
         marginTop: -100,
     },
     logoContainer: {
-        marginBottom: SPACING.xl,
-        padding: SPACING.md,
+        marginBottom: 24,
+        padding: 20,
         backgroundColor: '#F8F9FA',
-        borderRadius: 20,
+        borderRadius: 24,
     },
     title: {
-        fontSize: SIZES.h2 + 4,
+        fontSize: 32,
         fontWeight: '800',
         color: COLORS.primary,
         textAlign: 'center',
-        letterSpacing: 1.5,
-        lineHeight: 36,
+        letterSpacing: -0.5,
+        lineHeight: 40,
     },
     subtitle: {
-        fontSize: SIZES.body,
-        fontWeight: '600',
+        fontSize: 14,
+        fontWeight: '700',
         color: COLORS.secondary,
-        marginTop: SPACING.sm,
+        marginTop: 12,
         letterSpacing: 2,
+        textTransform: 'uppercase',
     },
     footer: {
         position: 'absolute',

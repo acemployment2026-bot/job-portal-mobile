@@ -7,31 +7,104 @@ import {
     TouchableOpacity,
     KeyboardAvoidingView,
     Platform,
-    ScrollView
+    ScrollView,
+    Image,
+    Alert,
+    ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SPACING } from '../constants/theme';
 import { ShieldCheck, Eye, EyeOff, LayoutGrid } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import config from '../config';
 
 const LoginScreen = ({ navigation }: any) => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    const handleLogin = async () => {
+        if (!email || !password) {
+            Alert.alert('Error', 'Please enter both email and password');
+            return;
+        }
+
+        setLoading(true);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+        try {
+            const response = await fetch(`${config.API_BASE_URL}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password }),
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+            const text = await response.text();
+            try {
+                const data = JSON.parse(text);
+
+                if (response.ok) {
+                    // Ensure only candidates/users can login to mobile app
+                    if (data.user.role !== 'user') {
+                        Alert.alert('Access Denied', 'This app is for candidates only. Please use the web portal.');
+                        return;
+                    }
+
+                    // Store token and user data
+                    await AsyncStorage.setItem('token', data.token);
+                    if (data.refreshToken) {
+                        await AsyncStorage.setItem('refreshToken', data.refreshToken);
+                    }
+                    await AsyncStorage.setItem('user', JSON.stringify(data.user));
+
+                    // Navigate to Main Tab Navigator
+                    navigation.replace('Main');
+                } else {
+                    Alert.alert('Login Failed', data.message || 'Invalid credentials');
+                }
+            } catch (e) {
+                console.error('Login JSON Parse Error:', e);
+                console.log('Login Response Text:', text); // Log the HTML or text
+                Alert.alert('Error', 'Server returned an invalid response. Please check server logs.');
+            }
+        } catch (error: any) {
+            if (error.name === 'AbortError') {
+                Alert.alert('Error', 'Request timed out. Please check your internet connection.');
+            } else {
+                console.error('Login Error:', error);
+                Alert.alert('Error', 'Network error. Please try again.');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                style={{ flex: 1 }}
             >
-                <View style={styles.fixedContent}>
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                >
                     {/* Logo Area */}
                     <View style={styles.header}>
-                        <View style={styles.logoDiamond}>
-                            <View style={styles.logoInner}>
-                                <LayoutGrid size={32} color={COLORS.white} />
-                            </View>
+                        <View style={styles.logoContainer}>
+                            <Image
+                                source={require('../../assets/logo.png')}
+                                style={styles.logoImage}
+                                resizeMode="contain"
+                            />
                         </View>
                         <Text style={styles.title}>Welcome Back</Text>
-                        <Text style={styles.subtitle}>ACE FINS TECH SOLUTION</Text>
+                        {/* <Text style={styles.subtitle}>ACE FINS TECH SOLUTION</Text> */}
                     </View>
 
                     {/* Form Area */}
@@ -43,6 +116,9 @@ const LoginScreen = ({ navigation }: any) => {
                                     placeholder="Email or Mobile Number"
                                     placeholderTextColor={COLORS.gray}
                                     keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    value={email}
+                                    onChangeText={setEmail}
                                 />
                             </View>
 
@@ -53,6 +129,8 @@ const LoginScreen = ({ navigation }: any) => {
                                         placeholder="Password"
                                         placeholderTextColor={COLORS.gray}
                                         secureTextEntry={!showPassword}
+                                        value={password}
+                                        onChangeText={setPassword}
                                     />
                                     <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                                         {showPassword ? <EyeOff size={20} color={COLORS.gray} /> : <Eye size={20} color={COLORS.gray} />}
@@ -66,9 +144,14 @@ const LoginScreen = ({ navigation }: any) => {
 
                             <TouchableOpacity
                                 style={styles.loginBtn}
-                                onPress={() => navigation.navigate('Main')}
+                                onPress={handleLogin}
+                                disabled={loading}
                             >
-                                <Text style={styles.loginBtnText}>Login</Text>
+                                {loading ? (
+                                    <ActivityIndicator color={COLORS.white} />
+                                ) : (
+                                    <Text style={styles.loginBtnText}>Login</Text>
+                                )}
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -87,7 +170,7 @@ const LoginScreen = ({ navigation }: any) => {
                             </TouchableOpacity>
                         </View>
                     </View>
-                </View>
+                </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -96,141 +179,138 @@ const LoginScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        backgroundColor: COLORS.white,
     },
-    fixedContent: {
-        flex: 1,
+    scrollContent: {
+        flexGrow: 1,
         paddingHorizontal: SPACING.xl,
-        paddingTop: Platform.OS === 'ios' ? 40 : 20,
-        paddingBottom: 20,
-        justifyContent: 'space-between',
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+        paddingBottom: 30,
+        justifyContent: 'center',
     },
     formContainer: {
-        flex: 1,
-        justifyContent: 'flex-start',
+        width: '100%',
     },
     header: {
         alignItems: 'center',
-        marginBottom: 50,
-    },
-    logoDiamond: {
-        width: 70,
-        height: 70,
-        backgroundColor: COLORS.primary,
-        transform: [{ rotate: '45deg' }],
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
         marginBottom: 40,
-        borderWidth: 4,
-        borderColor: '#E9ECEF',
     },
-    logoInner: {
-        width: 46,
-        height: 46,
-        backgroundColor: COLORS.secondary,
-        borderRadius: 8,
+    logoContainer: {
+        width: 100,
+        height: 100,
         justifyContent: 'center',
         alignItems: 'center',
+        marginBottom: 24,
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+    },
+    logoImage: {
+        width: '100%',
+        height: '100%',
     },
     title: {
-        fontSize: SIZES.h1,
+        fontSize: 32,
         fontWeight: '800',
         color: COLORS.primary,
         marginBottom: 8,
+        letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: SIZES.small,
         fontWeight: '600',
         color: COLORS.textMuted,
-        letterSpacing: 1,
+        letterSpacing: 2,
         textTransform: 'uppercase',
     },
     form: {
         width: '100%',
     },
     inputGroup: {
-        marginBottom: SPACING.lg,
+        marginBottom: 20,
     },
     input: {
-        height: 60,
-        backgroundColor: COLORS.white,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        height: 56,
+        backgroundColor: COLORS.inputBg,
         borderRadius: 16,
         paddingHorizontal: 20,
         fontSize: SIZES.body,
-        color: COLORS.text,
+        color: COLORS.primary,
+        fontWeight: '500',
     },
     passwordContainer: {
-        height: 60,
+        height: 56,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: COLORS.white,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        backgroundColor: COLORS.inputBg,
         borderRadius: 16,
         paddingHorizontal: 20,
     },
     passwordInput: {
         flex: 1,
         fontSize: SIZES.body,
-        color: COLORS.text,
+        color: COLORS.primary,
+        fontWeight: '500',
     },
     forgotBtn: {
         alignSelf: 'flex-end',
-        marginBottom: SPACING.xl,
+        marginTop: -10,
+        marginBottom: 30,
     },
     forgotText: {
-        color: COLORS.secondary,
+        color: COLORS.textMuted,
         fontWeight: '600',
         fontSize: SIZES.small,
     },
     loginBtn: {
         backgroundColor: COLORS.primary,
-        height: 60,
-        borderRadius: 30,
+        height: 56,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: SPACING.md,
-        elevation: 4,
+        marginBottom: 16,
         shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 16,
+        elevation: 8,
     },
     loginBtnText: {
         color: COLORS.white,
-        fontSize: SIZES.body,
+        fontSize: 16,
         fontWeight: '700',
+        letterSpacing: 0.5,
     },
     otpBtn: {
         backgroundColor: COLORS.white,
-        height: 60,
-        borderRadius: 30,
+        height: 56,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.primary,
+        borderWidth: 1.5,
+        borderColor: COLORS.lightGray,
     },
     otpBtnText: {
         color: COLORS.primary,
-        fontSize: SIZES.body,
+        fontSize: 16,
         fontWeight: '700',
     },
     footer: {
         flexDirection: 'row',
         justifyContent: 'center',
-        marginTop: 60,
+        marginTop: 40,
     },
     footerText: {
         color: COLORS.textMuted,
         fontSize: SIZES.body,
+        fontWeight: '500',
     },
     registerText: {
         color: COLORS.secondary,
         fontSize: SIZES.body,
         fontWeight: '700',
+        marginLeft: 5,
     },
 });
 

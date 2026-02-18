@@ -7,14 +7,62 @@ import {
     TouchableOpacity,
     KeyboardAvoidingView,
     Platform,
-    ScrollView
+    ScrollView,
+    Alert,
+    ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SPACING } from '../constants/theme';
 import { ArrowLeft, MapPin, Eye, EyeOff } from 'lucide-react-native';
+import config from '../config';
 
 const RegisterScreen = ({ navigation }: any) => {
+    const [fullName, setFullName] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
+    const [location, setLocation] = useState('');
+    const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    const handleRegister = async () => {
+        if (!fullName || !email || !password || !phone) {
+            Alert.alert('Error', 'Please fill in all required fields');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const response = await fetch(`${config.API_BASE_URL}/auth/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    fullName,
+                    email,
+                    phone,
+                    location,
+                    password
+                }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                Alert.alert('Success', 'Account created successfully!', [
+                    { text: 'OK', onPress: () => navigation.navigate('Login') }
+                ]);
+            } else {
+                Alert.alert('Registration Failed', data.message || 'Something went wrong');
+            }
+        } catch (error) {
+            console.error('Registration Error:', error);
+            Alert.alert('Error', 'Network error. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -22,7 +70,10 @@ const RegisterScreen = ({ navigation }: any) => {
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={{ flex: 1 }}
             >
-                <View style={styles.fixedContent}>
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                >
                     {/* Back Button */}
                     <TouchableOpacity
                         style={styles.backBtn}
@@ -45,6 +96,8 @@ const RegisterScreen = ({ navigation }: any) => {
                                 style={styles.input}
                                 placeholder="John Doe"
                                 placeholderTextColor={COLORS.gray}
+                                value={fullName}
+                                onChangeText={setFullName}
                             />
                         </View>
 
@@ -55,6 +108,9 @@ const RegisterScreen = ({ navigation }: any) => {
                                 placeholder="example@email.com"
                                 placeholderTextColor={COLORS.gray}
                                 keyboardType="email-address"
+                                autoCapitalize="none"
+                                value={email}
+                                onChangeText={setEmail}
                             />
                         </View>
 
@@ -69,6 +125,8 @@ const RegisterScreen = ({ navigation }: any) => {
                                     placeholder="98765 43210"
                                     placeholderTextColor={COLORS.gray}
                                     keyboardType="phone-pad"
+                                    value={phone}
+                                    onChangeText={setPhone}
                                 />
                             </View>
                         </View>
@@ -80,6 +138,8 @@ const RegisterScreen = ({ navigation }: any) => {
                                     style={styles.locationInput}
                                     placeholder="Chennai, Tamil Nadu"
                                     placeholderTextColor={COLORS.gray}
+                                    value={location}
+                                    onChangeText={setLocation}
                                 />
                                 <MapPin size={20} color={COLORS.gray} />
                             </View>
@@ -93,6 +153,8 @@ const RegisterScreen = ({ navigation }: any) => {
                                     placeholder="••••••••"
                                     placeholderTextColor={COLORS.gray}
                                     secureTextEntry={!showPassword}
+                                    value={password}
+                                    onChangeText={setPassword}
                                 />
                                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                                     {showPassword ? <EyeOff size={20} color={COLORS.gray} /> : <Eye size={20} color={COLORS.gray} />}
@@ -103,9 +165,14 @@ const RegisterScreen = ({ navigation }: any) => {
                         {/* Submit Button */}
                         <TouchableOpacity
                             style={styles.submitBtn}
-                            onPress={() => navigation.navigate('Main')}
+                            onPress={handleRegister}
+                            disabled={loading}
                         >
-                            <Text style={styles.submitBtnText}>Create Account</Text>
+                            {loading ? (
+                                <ActivityIndicator color={COLORS.white} />
+                            ) : (
+                                <Text style={styles.submitBtnText}>Create Account</Text>
+                            )}
                         </TouchableOpacity>
                     </View>
 
@@ -116,7 +183,7 @@ const RegisterScreen = ({ navigation }: any) => {
                             <Text style={styles.loginText}>Log In</Text>
                         </TouchableOpacity>
                     </View>
-                </View>
+                </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -125,33 +192,32 @@ const RegisterScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        backgroundColor: COLORS.white,
     },
-    fixedContent: {
-        flex: 1,
+    scrollContent: {
+        flexGrow: 1,
         paddingHorizontal: SPACING.xl,
-        paddingTop: Platform.OS === 'ios' ? 40 : 10,
-        paddingBottom: 20,
-        justifyContent: 'space-between',
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+        paddingBottom: 30,
+        justifyContent: 'center',
     },
     backBtn: {
-        width: 40,
-        height: 40,
-        justifyContent: 'center',
         marginBottom: 20,
     },
     header: {
         marginBottom: 30,
     },
     title: {
-        fontSize: SIZES.h1,
+        fontSize: 32,
         fontWeight: '800',
         color: COLORS.primary,
         marginBottom: 8,
+        letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: SIZES.body,
         color: COLORS.textMuted,
+        fontWeight: '500',
     },
     form: {
         width: '100%',
@@ -160,96 +226,87 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     label: {
-        fontSize: SIZES.small,
-        fontWeight: '600',
-        color: COLORS.textMuted,
-        marginBottom: 8,
+        display: 'none', // Hiding labels for minimal look, rely on placeholders
     },
     input: {
         height: 56,
         backgroundColor: COLORS.inputBg,
-        borderRadius: 12,
-        paddingHorizontal: 16,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        borderRadius: 16,
+        paddingHorizontal: 20,
         fontSize: SIZES.body,
-        color: COLORS.text,
+        color: COLORS.primary,
+        fontWeight: '500',
     },
     phoneInputRow: {
         flexDirection: 'row',
         height: 56,
     },
     prefixBox: {
-        width: 60,
+        width: 70,
         backgroundColor: COLORS.inputBg,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: 12,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 10,
+        marginRight: 12,
     },
     prefixText: {
         fontSize: SIZES.body,
         fontWeight: '600',
-        color: COLORS.text,
+        color: COLORS.primary,
     },
     phoneInput: {
         flex: 1,
         backgroundColor: COLORS.inputBg,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: 12,
-        paddingHorizontal: 16,
+        borderRadius: 16,
+        paddingHorizontal: 20,
         fontSize: SIZES.body,
-        color: COLORS.text,
+        color: COLORS.primary,
+        fontWeight: '500',
     },
     locationInputRow: {
         height: 56,
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: COLORS.inputBg,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: 12,
-        paddingHorizontal: 16,
+        borderRadius: 16,
+        paddingHorizontal: 20,
     },
     locationInput: {
         flex: 1,
         fontSize: SIZES.body,
-        color: COLORS.text,
+        color: COLORS.primary,
+        fontWeight: '500',
     },
     passwordInputRow: {
         height: 56,
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: COLORS.inputBg,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: 12,
-        paddingHorizontal: 16,
+        borderRadius: 16,
+        paddingHorizontal: 20,
     },
     passwordInput: {
         flex: 1,
         fontSize: SIZES.body,
-        color: COLORS.text,
+        color: COLORS.primary,
+        fontWeight: '500',
     },
     submitBtn: {
         backgroundColor: COLORS.primary,
-        height: 60,
+        height: 56,
         borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 20,
-        elevation: 4,
+        marginTop: 10,
         shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 16,
+        elevation: 8,
     },
     submitBtnText: {
         color: COLORS.white,
-        fontSize: SIZES.body,
+        fontSize: 16,
         fontWeight: '700',
         letterSpacing: 0.5,
     },
@@ -261,11 +318,13 @@ const styles = StyleSheet.create({
     footerText: {
         color: COLORS.textMuted,
         fontSize: SIZES.body,
+        fontWeight: '500',
     },
     loginText: {
         color: COLORS.secondary,
         fontSize: SIZES.body,
         fontWeight: '700',
+        marginLeft: 5,
     },
 });
 

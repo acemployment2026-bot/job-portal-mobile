@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, TouchableOpacity } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
@@ -9,7 +9,9 @@ import {
     User,
     Search,
     CheckSquare,
-    Settings
+    Settings,
+    MessageSquare,
+    Map,
 } from 'lucide-react-native';
 import { COLORS } from '../constants/theme';
 
@@ -23,6 +25,15 @@ import HomeScreen from '../screens/HomeScreen';
 import JobListingsScreen from '../screens/JobListingsScreen';
 import JobDetailScreen from '../screens/JobDetailScreen';
 import ApplyConfirmationScreen from '../screens/ApplyConfirmationScreen';
+import ChatListScreen from '../screens/Chat/ChatListScreen';
+import ChatRoomScreen from '../screens/Chat/ChatRoomScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import ApplicationsScreen from '../screens/ApplicationsScreen';
+import ResumeScreen from '../screens/ResumeScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
+import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -36,6 +47,14 @@ const JobsStack = () => (
     </Stack.Navigator>
 );
 
+// Sub-stack for Chat
+const ChatStack = () => (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="ChatList" component={ChatListScreen} />
+        <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
+    </Stack.Navigator>
+);
+
 const MainTabNavigator = () => {
     return (
         <Tab.Navigator
@@ -44,24 +63,26 @@ const MainTabNavigator = () => {
                 tabBarShowLabel: false,
                 tabBarHideOnKeyboard: true,
                 tabBarStyle: {
-                    height: 48,
+                    height: Platform.OS === 'ios' ? 85 : 80,
                     backgroundColor: '#FFFFFF',
                     borderTopWidth: 1,
                     borderTopColor: '#F1F3F5',
-                    paddingBottom: 0,
+                    paddingBottom: Platform.OS === 'ios' ? 25 : 10,
                     paddingTop: 0,
                 },
                 tabBarItemStyle: {
                     justifyContent: 'center',
                     alignItems: 'center',
-                    height: 48,
+                    height: Platform.OS === 'ios' ? 60 : 55,
                 },
                 tabBarIcon: ({ focused }) => {
                     let icon;
                     if (route.name === 'HomeTab') {
                         icon = <HomeIcon size={22} color={focused ? COLORS.primary : COLORS.gray} />;
                     } else if (route.name === 'JobsTab') {
-                        icon = <Search size={22} color={focused ? COLORS.primary : COLORS.gray} />;
+                        icon = <Map size={22} color={focused ? COLORS.primary : COLORS.gray} />;
+                    } else if (route.name === 'MessagesTab') {
+                        icon = <MessageSquare size={22} color={focused ? COLORS.primary : COLORS.gray} />;
                     } else if (route.name === 'SavedTab') {
                         icon = <CheckSquare size={22} color={focused ? COLORS.primary : COLORS.gray} />;
                     } else if (route.name === 'ProfileTab') {
@@ -71,16 +92,17 @@ const MainTabNavigator = () => {
                     return (
                         <View style={{ alignItems: 'center', justifyContent: 'center' }}>
                             {icon}
-                            {focused && <View style={styles.activeDot} />}
                         </View>
                     );
                 },
-            })}
+            })
+            }
         >
             <Tab.Screen name="HomeTab" component={HomeScreen} />
             <Tab.Screen name="JobsTab" component={JobsStack} />
-            <Tab.Screen name="SavedTab" component={HomeScreen} />
-            <Tab.Screen name="ProfileTab" component={HomeScreen} />
+            <Tab.Screen name="MessagesTab" component={ChatStack} />
+            <Tab.Screen name="SavedTab" component={ApplicationsScreen} />
+            <Tab.Screen name="ProfileTab" component={ProfileScreen} />
         </Tab.Navigator >
     );
 };
@@ -101,20 +123,15 @@ const AppNavigator = () => {
             <Stack.Screen name="Register" component={RegisterScreen} />
             {/* Once logged in, move to the Tab Navigator */}
             <Stack.Screen name="Main" component={MainTabNavigator} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="Applications" component={ApplicationsScreen} />
+            <Stack.Screen name="Resume" component={ResumeScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+            <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         </Stack.Navigator>
     );
 };
 
-const styles = StyleSheet.create({
-    activeDot: {
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: '#FF1E1E',
-        marginTop: 2,
-        position: 'absolute',
-        bottom: -6,
-    }
-});
 
 export default AppNavigator;
