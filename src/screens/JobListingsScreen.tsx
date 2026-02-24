@@ -108,7 +108,7 @@ const JobListingsScreen = ({ navigation }: any) => {
                     </TouchableOpacity>
                 </View>
 
-                <Text style={styles.categoryLabel}>CHENNAI CAREERS</Text>
+                <Text style={styles.categoryLabel}>India CAREERS</Text>
 
                 {/* Job List */}
                 {loading ? (

@@ -32,7 +32,7 @@ const { width } = Dimensions.get('window');
 const JobDetailScreen = ({ navigation, route }: any) => {
     const job = route.params?.job || {
         title: 'Frontend Developer – Chennai OMR',
-        company: 'ACE FINS TECH SOLUTION',
+        company: 'Job Search India',
         location: 'Chennai, IN',
         salary: '₹10 - 15 LPA',
         experience: '3-5 Years',
@@ -147,7 +147,7 @@ const JobDetailScreen = ({ navigation, route }: any) => {
                 <View style={styles.sectionCard}>
                     <Text style={styles.sectionTitle}>Job Description</Text>
                     <Text style={styles.sectionDescription}>
-                        {job.description || "We are seeking a passionate Frontend Developer to join our dynamic team in Chennai. You will be responsible for building the 'client-side' of our web applications."}
+                        {job.description || "We are seeking a passionate Frontend Developer to join our dynamic team in India. You will be responsible for building the 'client-side' of our web applications."}
                     </Text>
                 </View>
 

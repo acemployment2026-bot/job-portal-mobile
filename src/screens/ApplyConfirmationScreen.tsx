@@ -32,7 +32,7 @@ const { width } = Dimensions.get('window');
 const ApplyConfirmationScreen = ({ navigation, route }: any) => {
     const job = route.params?.job || {
         title: 'Senior Financial Analyst',
-        company: 'ACE FINS TECH SOLUTION',
+        company: 'Job Search India',
         location: 'Chennai'
     };
 
@@ -223,7 +223,7 @@ const ApplyConfirmationScreen = ({ navigation, route }: any) => {
                 {/* Info Box */}
                 <View style={styles.disclaimerBox}>
                     <Text style={styles.disclaimerText}>
-                        By submitting, you agree to share your profile and contact information with ACE FINS TECH SOLUTION for recruitment purposes.
+                        By submitting, you agree to share your profile and contact information with Job Search India for recruitment purposes.
                     </Text>
                 </View>
 

@@ -40,8 +40,8 @@ const SplashScreen = ({ navigation }: any) => {
                 <View style={styles.logoContainer}>
                     <ShieldCheck size={64} color={COLORS.primary} strokeWidth={1.5} />
                 </View>
-                <Text style={styles.title}>ACE FINS TECH{'\n'}SOLUTION</Text>
-                <Text style={styles.subtitle}>CHENNAI CAREERS APP</Text>
+                <Text style={styles.title}>Job Search India{'\n'}SOLUTION</Text>
+                <Text style={styles.subtitle}>India CAREERS APP</Text>
             </View>
             <View style={styles.footer}>
                 <ActivityIndicator size="large" color={COLORS.primary} />

@@ -104,7 +104,7 @@ const LoginScreen = ({ navigation }: any) => {
                             />
                         </View>
                         <Text style={styles.title}>Welcome Back</Text>
-                        {/* <Text style={styles.subtitle}>ACE FINS TECH SOLUTION</Text> */}
+                        {/* <Text style={styles.subtitle}>Job Search India</Text> */}
                     </View>
 
                     {/* Form Area */}
