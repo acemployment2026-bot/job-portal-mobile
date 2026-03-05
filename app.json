@@ -1,25 +1,28 @@
 {
   "expo": {
-    "name": "job-portal-mobile",
-    "slug": "job-portal-mobile",
-    "version": "1.0.0",
+    "name": "Job Search India",
+    "slug": "job-search-india",
+    "owner": "jobsearchindia-2",
+    "version": "2.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo.png",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "buildNumber": "2"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.jobportal.mobile",
+      "versionCode": 2,
       "permissions": [
         "INTERNET"
       ]
@@ -29,7 +32,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "34001105-51d3-492e-b9c7-b6865f436bc5"
+        "projectId": "0b34d72c-facd-4fcd-b918-97c2777977f2"
       }
     }
   }

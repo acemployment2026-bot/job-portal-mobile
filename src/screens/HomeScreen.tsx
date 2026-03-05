@@ -31,10 +31,12 @@ import {
     Home as HomeIcon,
     CheckSquare
 } from 'lucide-react-native';
+import { useNotifications } from '../hooks/useNotifications';
 
 const { width } = Dimensions.get('window');
 
 const HomeScreen = ({ navigation }: any) => {
+    useNotifications(); // Initialize push notifications
     const [user, setUser] = useState<any>(null);
     const [stats, setStats] = useState<any>(null);
     const [recommendedJobs, setRecommendedJobs] = useState<any[]>([]);
@@ -122,20 +124,10 @@ const HomeScreen = ({ navigation }: any) => {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
                 }
             >
-                {/* Search Bar */}
-                <View style={styles.searchContainer}>
-                    <Search size={20} color={COLORS.gray} style={styles.searchIcon} />
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder="Search jobs in Chennai..."
-                        placeholderTextColor={COLORS.gray}
-                    />
-                </View>
-
                 {/* Recommended Jobs */}
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Recommended Jobs</Text>
-                    <TouchableOpacity onPress={() => navigation.navigate('JobsTab')}>
+                    <TouchableOpacity onPress={() => navigation.navigate('JobsTab', { screen: 'JobListings' })}>
                         <Text style={styles.seeAll}>See all</Text>
                     </TouchableOpacity>
                 </View>

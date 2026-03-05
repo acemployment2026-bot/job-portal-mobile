@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, View, Text, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, ActivityIndicator, Image } from 'react-native';
 import { COLORS, SIZES, SPACING } from '../constants/theme';
-import { ShieldCheck } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// @ts-ignore
+import logoImage from '../../assets/logo.png';
 
 const SplashScreen = ({ navigation }: any) => {
     useEffect(() => {
@@ -38,10 +40,14 @@ const SplashScreen = ({ navigation }: any) => {
         <View style={styles.container}>
             <View style={styles.content}>
                 <View style={styles.logoContainer}>
-                    <ShieldCheck size={64} color={COLORS.primary} strokeWidth={1.5} />
+                    <Image
+                        source={logoImage}
+                        style={styles.logo}
+                        resizeMode="contain"
+                    />
                 </View>
-                <Text style={styles.title}>Job Search India{'\n'}SOLUTION</Text>
-                <Text style={styles.subtitle}>India CAREERS APP</Text>
+                <Text style={styles.title}>Job Search India</Text>
+                <Text style={styles.subtitle}>India's Premier Careers App</Text>
             </View>
             <View style={styles.footer}>
                 <ActivityIndicator size="large" color={COLORS.primary} />
@@ -63,9 +69,12 @@ const styles = StyleSheet.create({
     },
     logoContainer: {
         marginBottom: 24,
-        padding: 20,
-        backgroundColor: '#F8F9FA',
-        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    logo: {
+        width: 150,
+        height: 150,
     },
     title: {
         fontSize: 32,

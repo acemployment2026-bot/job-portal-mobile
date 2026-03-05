@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     StyleSheet,
     View,
@@ -8,7 +8,10 @@ import {
     TextInput,
     ActivityIndicator,
     Platform,
-    RefreshControl
+    RefreshControl,
+    Modal,
+    Animated,
+    Dimensions
 } from 'react-native';
 import config from '../config';
 import { fetchWithAuth } from '../api/api';
@@ -22,48 +25,104 @@ import {
     Briefcase,
     DollarSign,
     Clock,
-    Briefcase as BriefcaseIcon,
     Home as HomeIcon,
-    CheckSquare,
-    Circle,
-    User
+    X
 } from 'lucide-react-native';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const JobListingsScreen = ({ navigation }: any) => {
     const [jobs, setJobs] = useState<any[]>([]);
+    const [filteredJobs, setFilteredJobs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+
+    // Search & Filter State
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showSearch, setShowSearch] = useState(false);
+    const [activeFilters, setActiveFilters] = useState<any>({
+        category: 'All',
+        salary: 'Any',
+        experience: 'Any'
+    });
+
+    // Modal state
+    const [modalVisible, setModalVisible] = useState(false);
+    const [modalConfig, setModalConfig] = useState<any>({ type: '', title: '', options: [] });
 
     useEffect(() => {
         fetchJobs();
     }, []);
 
+    useEffect(() => {
+        applyFilters();
+    }, [jobs, searchQuery, activeFilters]);
+
+    // Dynamic Filter Options
+    const filterOptions = useMemo(() => {
+        const categories = new Set(['All']);
+        const salaries = new Set(['Any']);
+        const experiences = new Set(['Any']);
+
+        jobs.forEach(job => {
+            if (job.department) categories.add(job.department);
+            if (job.category) categories.add(job.category);
+            if (job.salary) salaries.add(job.salary);
+            if (job.experience) experiences.add(job.experience);
+        });
+
+        return {
+            category: Array.from(categories),
+            salary: Array.from(salaries),
+            experience: Array.from(experiences)
+        };
+    }, [jobs]);
+
     const fetchJobs = async () => {
         try {
             const url = `${config.API_BASE_URL}/jobs`;
-            console.log('Fetching Jobs URL:', url);
             const response = await fetchWithAuth(url);
-
             const textFn = await response.text();
             try {
                 const data = JSON.parse(textFn);
                 if (response.ok) {
                     setJobs(data);
-                } else {
-                    console.error('Server error jobs:', data);
+                    setFilteredJobs(data);
                 }
             } catch (e) {
                 console.error('JSON Parse Error Jobs:', e);
-                console.log('Response returned HTML/Text:', textFn);
             }
         } catch (error: any) {
             console.error('Error fetching jobs:', error);
-            if (error.message === 'Network request failed') {
-                // Potentially a firewall issue
-            }
         } finally {
             setLoading(false);
         }
+    };
+
+    const applyFilters = () => {
+        let result = [...jobs];
+
+        if (searchQuery) {
+            result = result.filter(job =>
+                job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                job.company?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                job.location?.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+        }
+
+        if (activeFilters.category !== 'All') {
+            result = result.filter(job => job.department === activeFilters.category || job.category === activeFilters.category);
+        }
+
+        if (activeFilters.salary !== 'Any') {
+            result = result.filter(job => job.salary === activeFilters.salary);
+        }
+
+        if (activeFilters.experience !== 'Any') {
+            result = result.filter(job => job.experience === activeFilters.experience);
+        }
+
+        setFilteredJobs(result);
     };
 
     const onRefresh = useCallback(async () => {
@@ -72,6 +131,21 @@ const JobListingsScreen = ({ navigation }: any) => {
         setRefreshing(false);
     }, []);
 
+    const openFilterModal = (type: string) => {
+        const title = type.charAt(0).toUpperCase() + type.slice(1);
+        setModalConfig({
+            type,
+            title: `Filter by ${title}`,
+            options: filterOptions[type as keyof typeof filterOptions]
+        });
+        setModalVisible(true);
+    };
+
+    const selectOption = (option: string) => {
+        setActiveFilters((prev: any) => ({ ...prev, [modalConfig.type]: option }));
+        setModalVisible(false);
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             {/* Header */}
@@ -79,10 +153,31 @@ const JobListingsScreen = ({ navigation }: any) => {
                 <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
                     <ArrowLeft size={24} color={COLORS.primary} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Job Listings</Text>
-                <TouchableOpacity style={styles.searchBtn}>
-                    <Search size={22} color={COLORS.primary} />
-                </TouchableOpacity>
+
+                {!showSearch ? (
+                    <>
+                        <Text style={styles.headerTitle}>Job Listings</Text>
+                        <TouchableOpacity style={styles.searchBtn} onPress={() => setShowSearch(true)}>
+                            <Search size={22} color={COLORS.primary} />
+                        </TouchableOpacity>
+                    </>
+                ) : (
+                    <View style={styles.searchContainer}>
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Search jobs..."
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            autoFocus
+                        />
+                        <TouchableOpacity onPress={() => {
+                            setShowSearch(false);
+                            setSearchQuery('');
+                        }}>
+                            <X size={20} color={COLORS.gray} />
+                        </TouchableOpacity>
+                    </View>
+                )}
             </View>
 
             <ScrollView
@@ -92,71 +187,151 @@ const JobListingsScreen = ({ navigation }: any) => {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
                 }
             >
-                {/* Filters */}
+                {/* Filters Row */}
                 <View style={styles.filterRow}>
-                    <TouchableOpacity style={styles.filterBtn}>
-                        <Text style={styles.filterText}>Category</Text>
-                        <ChevronDown size={14} color={COLORS.primary} />
+                    <TouchableOpacity
+                        style={[styles.filterBtn, activeFilters.category !== 'All' && styles.activeFilterBtn]}
+                        onPress={() => openFilterModal('category')}
+                    >
+                        <Text style={[styles.filterText, activeFilters.category !== 'All' && styles.activeFilterText]} numberOfLines={1}>
+                            {activeFilters.category === 'All' ? 'Category' : activeFilters.category}
+                        </Text>
+                        <ChevronDown size={14} color={activeFilters.category !== 'All' ? COLORS.white : COLORS.primary} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.filterBtn}>
-                        <Text style={styles.filterText}>Salary</Text>
-                        <ChevronDown size={14} color={COLORS.primary} />
+
+                    <TouchableOpacity
+                        style={[styles.filterBtn, activeFilters.salary !== 'Any' && styles.activeFilterBtn]}
+                        onPress={() => openFilterModal('salary')}
+                    >
+                        <Text style={[styles.filterText, activeFilters.salary !== 'Any' && styles.activeFilterText]} numberOfLines={1}>
+                            {activeFilters.salary === 'Any' ? 'Salary' : activeFilters.salary}
+                        </Text>
+                        <ChevronDown size={14} color={activeFilters.salary !== 'Any' ? COLORS.white : COLORS.primary} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.filterBtn}>
-                        <Text style={styles.filterText}>Experience</Text>
-                        <ChevronDown size={14} color={COLORS.primary} />
+
+                    <TouchableOpacity
+                        style={[styles.filterBtn, activeFilters.experience !== 'Any' && styles.activeFilterBtn]}
+                        onPress={() => openFilterModal('experience')}
+                    >
+                        <Text style={[styles.filterText, activeFilters.experience !== 'Any' && styles.activeFilterText]} numberOfLines={1}>
+                            {activeFilters.experience === 'Any' ? 'Experience' : activeFilters.experience}
+                        </Text>
+                        <ChevronDown size={14} color={activeFilters.experience !== 'Any' ? COLORS.white : COLORS.primary} />
                     </TouchableOpacity>
                 </View>
 
-                <Text style={styles.categoryLabel}>India CAREERS</Text>
+                <Text style={styles.categoryLabel}>
+                    {filteredJobs.length} Jobs matching your search
+                </Text>
 
                 {/* Job List */}
                 {loading ? (
                     <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 50 }} />
                 ) : (
-                    jobs.map((job) => (
-                        <View key={job.id} style={styles.jobCard}>
-                            <View style={[styles.jobCardHeader, { justifyContent: 'space-between', alignItems: 'center' }]}>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.jobTitle}>{job.title}</Text>
-                                    <Text style={styles.companyName}>{job.company}</Text>
-                                </View>
-                                {((new Date().getTime() - new Date(job.created_at).getTime()) / (1000 * 3600 * 24) < 7) && (
-                                    <View style={styles.newBadge}>
-                                        <Text style={styles.newBadgeText}>NEW</Text>
-                                    </View>
-                                )}
-                            </View>
-
-                            <View style={styles.jobInfoGrid}>
-                                <View style={styles.infoRow}>
-                                    <MapPin size={16} color={COLORS.gray} />
-                                    <Text style={styles.infoText}>{job.location?.split(',')[0]}</Text>
-                                </View>
-                                <View style={styles.infoRow}>
-                                    <DollarSign size={16} color={COLORS.gray} />
-                                    <Text style={styles.infoText}>{job.salary}</Text>
-                                </View>
-                                <View style={styles.infoRow}>
-                                    <Briefcase size={16} color={COLORS.gray} />
-                                    <Text style={styles.infoText}>{job.type}</Text>
-                                </View>
-                                <View style={styles.infoRow}>
-                                    <HomeIcon size={16} color={COLORS.gray} />
-                                    <Text style={styles.infoText}>{job.modality || 'On-site'}</Text>
-                                </View>
-                            </View>
-
+                    filteredJobs.length > 0 ? (
+                        filteredJobs.map((job) => (
                             <TouchableOpacity
-                                style={styles.applyBtn}
+                                key={job.id}
+                                style={styles.jobCard}
                                 onPress={() => navigation.navigate('JobDetails', { job })}
+                                activeOpacity={0.7}
                             >
-                                <Text style={styles.applyBtnText}>Apply Now</Text>
+                                <View style={styles.jobCardHeader}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.jobTitle}>{job.title}</Text>
+                                        <Text style={styles.companyName}>{job.company}</Text>
+                                    </View>
+                                    {((new Date().getTime() - new Date(job.created_at).getTime()) / (1000 * 3600 * 24) < 7) && (
+                                        <View style={styles.newBadge}>
+                                            <Text style={styles.newBadgeText}>NEW</Text>
+                                        </View>
+                                    )}
+                                </View>
+
+                                <View style={styles.jobInfoGrid}>
+                                    <View style={styles.infoRow}>
+                                        <MapPin size={16} color={COLORS.gray} />
+                                        <Text style={styles.infoText}>{job.location?.split(',')[0]}</Text>
+                                    </View>
+                                    <View style={styles.infoRow}>
+                                        <DollarSign size={16} color={COLORS.gray} />
+                                        <Text style={styles.infoText}>{job.salary}</Text>
+                                    </View>
+                                    <View style={styles.infoRow}>
+                                        <Briefcase size={16} color={COLORS.gray} />
+                                        <Text style={styles.infoText}>{job.type}</Text>
+                                    </View>
+                                    <View style={styles.infoRow}>
+                                        <HomeIcon size={16} color={COLORS.gray} />
+                                        <Text style={styles.infoText}>{job.modality || 'On-site'}</Text>
+                                    </View>
+                                </View>
+
+                                <View style={styles.applyBtn}>
+                                    <Text style={styles.applyBtnText}>View Details</Text>
+                                </View>
+                            </TouchableOpacity>
+                        ))
+                    ) : (
+                        <View style={styles.noResults}>
+                            <Search size={48} color={COLORS.gray} style={{ marginBottom: 16, opacity: 0.2 }} />
+                            <Text style={styles.noResultsText}>No jobs found matching your criteria</Text>
+                            <TouchableOpacity onPress={() => {
+                                setSearchQuery('');
+                                setActiveFilters({ category: 'All', salary: 'Any', experience: 'Any' });
+                            }}>
+                                <Text style={{ color: COLORS.primary, fontWeight: '700', marginTop: 12 }}>Reset All Filters</Text>
                             </TouchableOpacity>
                         </View>
-                    ))
+                    )
                 )}
             </ScrollView>
+
+            {/* Custom Filter Selection UI (Premium Bottom Sheet Style) */}
+            <Modal
+                transparent={true}
+                visible={modalVisible}
+                animationType="slide"
+                onRequestClose={() => setModalVisible(false)}
+            >
+                <TouchableOpacity
+                    style={styles.modalBackdrop}
+                    activeOpacity={1}
+                    onPress={() => setModalVisible(false)}
+                >
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>{modalConfig.title}</Text>
+                            <TouchableOpacity onPress={() => setModalVisible(false)}>
+                                <X size={24} color={COLORS.primary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalOptionsList} showsVerticalScrollIndicator={false}>
+                            {modalConfig.options.map((option: string, index: number) => (
+                                <TouchableOpacity
+                                    key={index}
+                                    style={[
+                                        styles.optionItem,
+                                        activeFilters[modalConfig.type] === option && styles.activeOptionItem
+                                    ]}
+                                    onPress={() => selectOption(option)}
+                                >
+                                    <Text style={[
+                                        styles.optionText,
+                                        activeFilters[modalConfig.type] === option && styles.activeOptionText
+                                    ]}>
+                                        {option}
+                                    </Text>
+                                    {activeFilters[modalConfig.type] === option && (
+                                        <View style={styles.activeDot} />
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
         </SafeAreaView>
     );
 };
@@ -171,10 +346,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: SPACING.xl,
-        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+        paddingTop: Platform.OS === 'ios' ? 20 : 40,
         paddingBottom: 20,
         backgroundColor: COLORS.white,
-        zIndex: 10,
     },
     backBtn: {
         width: 44,
@@ -204,25 +378,34 @@ const styles = StyleSheet.create({
     },
     filterRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         marginTop: 10,
         marginBottom: 25,
+        gap: 8,
     },
     filterBtn: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
         backgroundColor: COLORS.white,
-        paddingHorizontal: 16,
+        paddingHorizontal: 12,
         paddingVertical: 10,
         borderRadius: 14,
         borderWidth: 1.5,
         borderColor: COLORS.lightGray,
     },
     filterText: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: '700',
         color: COLORS.primary,
-        marginRight: 6,
+        marginRight: 4,
+    },
+    activeFilterBtn: {
+        backgroundColor: COLORS.primary,
+        borderColor: COLORS.primary,
+    },
+    activeFilterText: {
+        color: COLORS.white,
     },
     categoryLabel: {
         fontSize: 12,
@@ -293,18 +476,96 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 4,
     },
     applyBtnText: {
         color: COLORS.white,
         fontSize: 14,
         fontWeight: '700',
         letterSpacing: 0.5,
-    }
+    },
+    searchContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: COLORS.inputBg,
+        borderRadius: 14,
+        marginLeft: 16,
+        paddingHorizontal: 12,
+        height: 44,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 15,
+        color: COLORS.primary,
+        fontWeight: '600',
+    },
+    modalBackdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: COLORS.white,
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        maxHeight: SCREEN_HEIGHT * 0.7,
+        paddingBottom: 40,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 24,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.inputBg,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: COLORS.primary,
+    },
+    modalOptionsList: {
+        padding: 16,
+    },
+    optionItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 18,
+        borderRadius: 16,
+        marginBottom: 8,
+        backgroundColor: COLORS.white,
+    },
+    activeOptionItem: {
+        backgroundColor: COLORS.inputBg,
+    },
+    optionText: {
+        fontSize: 16,
+        color: COLORS.primary,
+        fontWeight: '600',
+    },
+    activeOptionText: {
+        color: COLORS.primary,
+        fontWeight: '800',
+    },
+    activeDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: COLORS.primary,
+    },
+    noResults: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 60,
+    },
+    noResultsText: {
+        fontSize: 16,
+        color: COLORS.textMuted,
+        fontWeight: '600',
+        textAlign: 'center',
+    },
 });
 
 export default JobListingsScreen;
+

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert, ScrollView, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING } from '../constants/theme';
 import { ArrowLeft, Bell, Lock, User, FileText, HelpCircle, LogOut } from 'lucide-react-native';
@@ -76,7 +76,9 @@ const SettingsScreen = ({ navigation }: any) => {
                     <SettingItem
                         icon={FileText}
                         title="Privacy Policy"
-                        onPress={() => Alert.alert('Info', 'Privacy Policy')}
+                        onPress={() => Linking.openURL('https://jobsearchindia.in/privacy').catch(() => {
+                            Alert.alert('Error', 'Could not open Privacy Policy. Please visit our website.');
+                        })}
                     />
                 </View>
 

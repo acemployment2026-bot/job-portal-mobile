@@ -25,7 +25,7 @@ const OnboardingScreen = ({ navigation }: any) => {
 
             {/* Text Context */}
             <View style={styles.content}>
-                <Text style={styles.title}>Find Jobs in{'\n'}India</Text>
+                <Text style={styles.title}>Job Search India</Text>
                 <Text style={styles.description}>
                     Discover premium opportunities at the heart of South India's tech hub.
                 </Text>

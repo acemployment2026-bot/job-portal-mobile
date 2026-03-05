@@ -24,9 +24,10 @@ const ResumeScreen = ({ navigation }: any) => {
                 const user = JSON.parse(userData);
 
                 if (user.resume_url) {
+                    const finalUrl = user.resume_url.startsWith('http') ? user.resume_url : `${config.API_BASE_URL}${user.resume_url}`;
                     setResumeData({
                         name: user.resume_original_name || 'My Resume.pdf',
-                        url: user.resume_url,
+                        url: finalUrl,
                         date: user.updated_at || new Date().toISOString()
                     });
                 }
@@ -100,10 +101,13 @@ const ResumeScreen = ({ navigation }: any) => {
                 user.updated_at = data.resume.date;
                 await AsyncStorage.setItem('user', JSON.stringify(user));
 
+                const resumeUrl = data.resume.file_url || data.resume.url;
+                const finalUrl = resumeUrl.startsWith('http') ? resumeUrl : `${config.API_BASE_URL}${resumeUrl}`;
+
                 setResumeData({
-                    name: data.resume.name,
-                    url: `${config.API_BASE_URL}${data.resume.url}`, // Ensure full URL if relative
-                    date: data.resume.date
+                    name: data.resume.original_name || data.resume.name,
+                    url: finalUrl,
+                    date: data.resume.uploaded_at || data.resume.date
                 });
             } else {
                 Alert.alert("Upload Failed", data.message || "Something went wrong");

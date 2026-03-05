@@ -14,15 +14,88 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SPACING } from '../constants/theme';
 import { Wallet } from 'lucide-react-native';
 
+import { Alert, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import config from '../config';
+
 const { width } = Dimensions.get('window');
 
 const OtpLoginScreen = ({ navigation }: any) => {
+    const [email, setEmail] = useState('');
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
+    const [sending, setSending] = useState(false);
+    const [verifying, setVerifying] = useState(false);
 
     const handleOtpChange = (value: string, index: number) => {
         const newOtp = [...otp];
         newOtp[index] = value;
         setOtp(newOtp);
+    };
+
+    const handleSendOtp = async () => {
+        if (!email) {
+            Alert.alert('Error', 'Please enter your email address.');
+            return;
+        }
+
+        setSending(true);
+        try {
+            const response = await fetch(`${config.API_BASE_URL}/auth/send-otp`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                Alert.alert('Success', 'OTP has been sent to your email.');
+            } else {
+                Alert.alert('Error', data.message || 'Failed to send OTP.');
+            }
+        } catch (error) {
+            console.error('Error sending OTP:', error);
+            Alert.alert('Error', 'Network error. Please try again.');
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        const otpString = otp.join('');
+        if (!email || otpString.length !== 6) {
+            Alert.alert('Error', 'Please enter your email and the 6-digit OTP.');
+            return;
+        }
+
+        setVerifying(true);
+        try {
+            const response = await fetch(`${config.API_BASE_URL}/auth/verify-otp`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, otp: otpString }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                await AsyncStorage.setItem('token', data.token);
+                await AsyncStorage.setItem('refreshToken', data.refreshToken);
+                await AsyncStorage.setItem('user', JSON.stringify(data.user));
+                navigation.navigate('Main');
+            } else {
+                Alert.alert('Error', data.message || 'Invalid OTP.');
+            }
+        } catch (error) {
+            console.error('Error verifying OTP:', error);
+            Alert.alert('Error', 'Network error. Please try again.');
+        } finally {
+            setVerifying(false);
+        }
     };
 
     return (
@@ -58,9 +131,20 @@ const OtpLoginScreen = ({ navigation }: any) => {
                                     placeholder="name@email.com"
                                     placeholderTextColor={COLORS.gray}
                                     keyboardType="email-address"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    autoCapitalize="none"
                                 />
-                                <TouchableOpacity style={styles.sendOtpBtn}>
-                                    <Text style={styles.sendOtpText}>Send OTP</Text>
+                                <TouchableOpacity
+                                    style={styles.sendOtpBtn}
+                                    onPress={handleSendOtp}
+                                    disabled={sending}
+                                >
+                                    {sending ? (
+                                        <ActivityIndicator size="small" color={COLORS.primary} />
+                                    ) : (
+                                        <Text style={styles.sendOtpText}>Send OTP</Text>
+                                    )}
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -85,9 +169,14 @@ const OtpLoginScreen = ({ navigation }: any) => {
                         {/* Action Button */}
                         <TouchableOpacity
                             style={styles.verifyBtn}
-                            onPress={() => navigation.navigate('Main')}
+                            onPress={handleVerifyOtp}
+                            disabled={verifying}
                         >
-                            <Text style={styles.verifyBtnText}>Verify OTP & Login</Text>
+                            {verifying ? (
+                                <ActivityIndicator color={COLORS.white} />
+                            ) : (
+                                <Text style={styles.verifyBtnText}>Verify OTP & Login</Text>
+                            )}
                         </TouchableOpacity>
 
                         <TouchableOpacity
