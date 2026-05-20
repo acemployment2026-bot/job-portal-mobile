@@ -3,26 +3,26 @@
     "name": "Job Search India",
     "slug": "job-search-india",
     "owner": "jobsearchindia-2",
-    "version": "2.0.0",
+    "version": "3.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo.png",
+    "icon": "./assets/icon-optimized.png",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/logo.png",
+      "image": "./assets/icon-optimized.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "2"
+      "buildNumber": "3"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.png",
+        "foregroundImage": "./assets/icon-optimized.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.jobportal.mobile",
-      "versionCode": 2,
+      "versionCode": 3,
       "permissions": [
         "INTERNET"
       ]

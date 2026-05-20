@@ -8,7 +8,8 @@ import {
     Dimensions,
     Platform,
     Share,
-    Alert
+    Alert,
+    Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SPACING } from '../constants/theme';
@@ -107,7 +108,11 @@ const JobDetailScreen = ({ navigation, route }: any) => {
 
                 <View style={styles.companyRow}>
                     <View style={styles.companyInitial}>
-                        <Text style={styles.initialText}>{job.company?.substring(0, 2).toUpperCase()}</Text>
+                        {job.logo_url ? (
+                            <Image source={{ uri: job.logo_url }} style={styles.logoImage} />
+                        ) : (
+                            <Image source={require('../../assets/icon.png')} style={styles.logoImage} />
+                        )}
                     </View>
                     <Text style={styles.companyName}>{job.company}</Text>
                 </View>
@@ -175,14 +180,26 @@ const JobDetailScreen = ({ navigation, route }: any) => {
             {/* Footer Actions */}
             <View style={styles.footer}>
                 <TouchableOpacity style={styles.chatBtn} onPress={handleChatWithHR}>
-                    <MessageCircle size={20} color={COLORS.primary} />
-                    <Text style={styles.chatBtnText}>CHAT WITH HR</Text>
+                    <MessageCircle size={18} color={COLORS.primary} />
+                    <Text
+                        style={styles.chatBtnText}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                    >
+                        CHAT WITH HR
+                    </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={styles.applyBtn}
                     onPress={() => navigation.navigate('ApplyConfirmation', { job })}
                 >
-                    <Text style={styles.applyBtnText}>APPLY NOW</Text>
+                    <Text
+                        style={styles.applyBtnText}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                    >
+                        APPLY NOW
+                    </Text>
                 </TouchableOpacity>
             </View>
         </SafeAreaView>
@@ -258,6 +275,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
+        overflow: 'hidden',
+    },
+    logoImage: {
+        width: 44,
+        height: 44,
+        resizeMode: 'cover',
     },
     initialText: {
         fontSize: 16,
@@ -405,40 +428,42 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     chatBtn: {
-        flex: 1,
-        height: 60,
-        borderRadius: 18,
-        borderWidth: 2,
+        flex: 1.2,
+        height: 56,
+        borderRadius: 16,
+        borderWidth: 1.5,
         borderColor: COLORS.lightGray,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 16,
+        marginRight: 12,
+        paddingHorizontal: 8,
     },
     chatBtnText: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '800',
         color: COLORS.primary,
-        marginLeft: 8,
+        marginLeft: 6,
     },
     applyBtn: {
         flex: 1,
-        height: 60,
-        borderRadius: 18,
+        height: 56,
+        borderRadius: 16,
         backgroundColor: COLORS.primary,
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 8,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
+        paddingHorizontal: 8,
     },
     applyBtnText: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '800',
         color: COLORS.white,
-        letterSpacing: 1,
+        letterSpacing: 0.5,
     },
 });
 

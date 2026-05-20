@@ -1,6 +1,7 @@
-// const API_BASE_URL = 'http://192.168.1.21:5001/api'; // Correct local LAN IP for physical devices
-// const API_BASE_URL = 'http://10.0.2.2:5000/api'; // 10.0.2.2 is the localhost for Android Emulator
-const API_BASE_URL = 'https://jobsearchindia.net/api'
+// const API_BASE_URL = 'http://192.168.1.51:5001/api'; // Use this for Physical Devices (your machine's local IP)
+// const API_BASE_URL = 'http://10.0.2.2:5001/api'; // Use this if you are testing on an Android Emulator
+const API_BASE_URL = 'https://jobsearchindia.net/api'; // Production server
+
 export default {
     API_BASE_URL,
 };

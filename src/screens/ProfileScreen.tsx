@@ -1,26 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SIZES, SPACING } from '../constants/theme';
 import { LogOut, User, FileText, ChevronRight, Settings, Trash2 } from 'lucide-react-native';
 
 const ProfileScreen = ({ navigation }: any) => {
     const [user, setUser] = useState<any>(null);
+    const [imgError, setImgError] = useState(false);
 
-    useEffect(() => {
-        const loadUser = async () => {
-            try {
-                const userData = await AsyncStorage.getItem('user');
-                if (userData) {
-                    setUser(JSON.parse(userData));
+    useFocusEffect(
+        useCallback(() => {
+            const loadUser = async () => {
+                try {
+                    const userData = await AsyncStorage.getItem('user');
+                    if (userData) {
+                        setUser(JSON.parse(userData));
+                        setImgError(false); // reset on load
+                    }
+                } catch (error) {
+                    console.error('Failed to load user', error);
                 }
-            } catch (error) {
-                console.error('Failed to load user', error);
-            }
-        };
-        loadUser();
-    }, []);
+            };
+            loadUser();
+        }, [])
+    );
 
     const handleLogout = async () => {
         Alert.alert(
@@ -40,6 +45,8 @@ const ProfileScreen = ({ navigation }: any) => {
         );
     };
 
+    const hasValidImage = user?.profile_picture_url && user.profile_picture_url !== 'null' && !imgError;
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
@@ -50,7 +57,16 @@ const ProfileScreen = ({ navigation }: any) => {
                 {/* User Info */}
                 <View style={styles.profileCard}>
                     <View style={styles.avatarContainer}>
-                        <User size={40} color={COLORS.primary} />
+                        {hasValidImage ? (
+                            <Image
+                                source={{ uri: user.profile_picture_url }}
+                                style={styles.avatarImage}
+                                onError={() => setImgError(true)}
+                                resizeMode="cover"
+                            />
+                        ) : (
+                            <User size={40} color={COLORS.primary} />
+                        )}
                     </View>
                     <View style={styles.userInfo}>
                         <Text style={styles.userName}>{user?.full_name || 'Candidate Name'}</Text>
@@ -136,6 +152,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 20,
+        overflow: 'hidden',
+    },
+    avatarImage: {
+        width: 70,
+        height: 70,
+        borderRadius: 35,
     },
     userInfo: {
         flex: 1,

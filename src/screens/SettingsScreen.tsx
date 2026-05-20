@@ -1,12 +1,32 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert, ScrollView, Linking } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert, ScrollView, Linking, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS, SPACING } from '../constants/theme';
 import { ArrowLeft, Bell, Lock, User, FileText, HelpCircle, LogOut } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SettingsScreen = ({ navigation }: any) => {
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+    const [user, setUser] = useState<any>(null);
+    const [imgError, setImgError] = useState(false);
+
+    useFocusEffect(
+        useCallback(() => {
+            const loadUser = async () => {
+                try {
+                    const userData = await AsyncStorage.getItem('user');
+                    if (userData) {
+                        setUser(JSON.parse(userData));
+                        setImgError(false); // reset on load
+                    }
+                } catch (error) {
+                    console.error('Failed to load user', error);
+                }
+            };
+            loadUser();
+        }, [])
+    );
 
     const handleLogout = async () => {
         Alert.alert(
@@ -50,6 +70,8 @@ const SettingsScreen = ({ navigation }: any) => {
         </TouchableOpacity>
     );
 
+    const hasValidImage = user?.profile_picture_url && user.profile_picture_url !== 'null' && !imgError;
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
@@ -61,6 +83,25 @@ const SettingsScreen = ({ navigation }: any) => {
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
+                <View style={styles.profileHeader}>
+                    <View style={styles.avatarContainer}>
+                        {hasValidImage ? (
+                            <Image
+                                source={{ uri: user.profile_picture_url }}
+                                style={styles.avatarImage}
+                                onError={() => setImgError(true)}
+                                resizeMode="cover"
+                            />
+                        ) : (
+                            <User size={32} color={COLORS.primary} />
+                        )}
+                    </View>
+                    <View style={styles.userInfo}>
+                        <Text style={styles.userName}>{user?.full_name || 'User Name'}</Text>
+                        <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
+                    </View>
+                </View>
+
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Account</Text>
                     <SettingItem
@@ -140,6 +181,41 @@ const styles = StyleSheet.create({
     },
     content: {
         padding: SPACING.xl,
+    },
+    profileHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 32,
+        backgroundColor: COLORS.inputBg,
+        padding: 20,
+        borderRadius: 20,
+    },
+    avatarContainer: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: COLORS.white,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
+        overflow: 'hidden',
+    },
+    avatarImage: {
+        width: 60,
+        height: 60,
+    },
+    userInfo: {
+        flex: 1,
+    },
+    userName: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: COLORS.primary,
+        marginBottom: 4,
+    },
+    userEmail: {
+        fontSize: 14,
+        color: COLORS.textMuted,
     },
     section: {
         marginBottom: 32,

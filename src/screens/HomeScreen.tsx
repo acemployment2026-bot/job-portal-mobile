@@ -42,6 +42,7 @@ const HomeScreen = ({ navigation }: any) => {
     const [recommendedJobs, setRecommendedJobs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [imgError, setImgError] = useState(false);
 
     const loadData = async () => {
         try {
@@ -49,6 +50,7 @@ const HomeScreen = ({ navigation }: any) => {
             if (userData) {
                 const parsedUser = JSON.parse(userData);
                 setUser(parsedUser);
+                setImgError(false);
                 await fetchDashboardData(parsedUser.id);
             }
         } catch (error) {
@@ -96,6 +98,8 @@ const HomeScreen = ({ navigation }: any) => {
         }
     };
 
+    const hasValidImage = user?.profile_picture_url && user.profile_picture_url !== 'null' && !imgError;
+
     return (
         <SafeAreaView style={styles.container}>
             {/* Header */}
@@ -111,9 +115,18 @@ const HomeScreen = ({ navigation }: any) => {
                     style={styles.avatarContainer}
                     onPress={() => navigation.navigate('ProfileTab')}
                 >
-                    <View style={styles.avatar}>
-                        <User size={24} color={COLORS.primary} />
-                    </View>
+                    {hasValidImage ? (
+                        <Image
+                            source={{ uri: user.profile_picture_url }}
+                            style={{ width: 50, height: 50, borderRadius: 25 }}
+                            onError={() => setImgError(true)}
+                            resizeMode="cover"
+                        />
+                    ) : (
+                        <View style={styles.avatar}>
+                            <User size={24} color={COLORS.primary} />
+                        </View>
+                    )}
                 </TouchableOpacity>
             </View>
 
@@ -144,8 +157,12 @@ const HomeScreen = ({ navigation }: any) => {
                                 })}
                             >
                                 <View style={styles.jobCardTop}>
-                                    <View style={[styles.companyLogo, { backgroundColor: COLORS.primary }]}>
-                                        <Text style={styles.logoText}>{job.company?.substring(0, 2).toUpperCase()}</Text>
+                                    <View style={[styles.companyLogo, { backgroundColor: COLORS.primary, overflow: 'hidden' }]}>
+                                        {job.logo_url ? (
+                                            <Image source={{ uri: job.logo_url }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
+                                        ) : (
+                                            <Image source={require('../../assets/icon.png')} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
+                                        )}
                                     </View>
                                     <TouchableOpacity>
                                         <Bookmark size={20} color={COLORS.gray} />
@@ -258,6 +275,7 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.lightGray,
         justifyContent: 'center',
         alignItems: 'center',
+        overflow: 'hidden',
     },
     avatar: {
         width: 44,

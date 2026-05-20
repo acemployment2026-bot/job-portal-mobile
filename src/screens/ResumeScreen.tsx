@@ -95,20 +95,23 @@ const ResumeScreen = ({ navigation }: any) => {
 
             if (response.ok) {
                 Alert.alert("Success", "Resume uploaded successfully!");
-                // Update local storage user data if needed, or just refresh screen state
-                user.resume_url = data.resume.url;
-                user.resume_original_name = data.resume.name;
-                user.updated_at = data.resume.date;
-                await AsyncStorage.setItem('user', JSON.stringify(user));
+                // Update local storage user data
+                const resumeUrl = data.resume?.file_url;
 
-                const resumeUrl = data.resume.file_url || data.resume.url;
-                const finalUrl = resumeUrl.startsWith('http') ? resumeUrl : `${config.API_BASE_URL}${resumeUrl}`;
+                if (resumeUrl) {
+                    user.resume_url = resumeUrl;
+                    user.resume_original_name = data.resume?.original_name;
+                    user.updated_at = data.resume?.uploaded_at;
+                    await AsyncStorage.setItem('user', JSON.stringify(user));
 
-                setResumeData({
-                    name: data.resume.original_name || data.resume.name,
-                    url: finalUrl,
-                    date: data.resume.uploaded_at || data.resume.date
-                });
+                    const finalUrl = resumeUrl.startsWith('http') ? resumeUrl : `${config.API_BASE_URL}${resumeUrl}`;
+
+                    setResumeData({
+                        name: data.resume?.original_name || 'My Resume.pdf',
+                        url: finalUrl,
+                        date: data.resume?.uploaded_at || new Date().toISOString()
+                    });
+                }
             } else {
                 Alert.alert("Upload Failed", data.message || "Something went wrong");
             }

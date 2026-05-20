@@ -9,14 +9,16 @@ import {
     Alert,
     ActivityIndicator,
     KeyboardAvoidingView,
-    Platform
+    Platform,
+    Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SPACING } from '../constants/theme';
-import { ArrowLeft, User, Phone, MapPin, Briefcase } from 'lucide-react-native';
+import { ArrowLeft, User, Phone, MapPin, Briefcase, Camera } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import config from '../config';
 import { fetchWithAuth } from '../api/api';
+import * as ImagePicker from 'expo-image-picker';
 
 const EditProfileScreen = ({ navigation }: any) => {
     const [loading, setLoading] = useState(true);
@@ -27,8 +29,10 @@ const EditProfileScreen = ({ navigation }: any) => {
         location: '',
         gender: '',
         highestEducation: '',
-        skills: ''
+        skills: '',
+        profilePictureUrl: ''
     });
+    const [profileImageAsset, setProfileImageAsset] = useState<any>(null);
 
     useEffect(() => {
         loadProfile();
@@ -45,7 +49,8 @@ const EditProfileScreen = ({ navigation }: any) => {
                     location: user.location || '',
                     gender: user.gender || '',
                     highestEducation: user.highest_education || '',
-                    skills: user.skills || ''
+                    skills: user.skills || '',
+                    profilePictureUrl: user.profile_picture_url || ''
                 });
             }
         } catch (error) {
@@ -63,6 +68,44 @@ const EditProfileScreen = ({ navigation }: any) => {
 
         setSaving(true);
         try {
+            // Check if we need to upload profile picture
+            let newProfilePictureUrl = userData.profilePictureUrl;
+
+            if (profileImageAsset) {
+                const formData = new FormData();
+                const uri = profileImageAsset.uri;
+                let fileName = profileImageAsset.fileName;
+                let mimeType = profileImageAsset.mimeType;
+
+                if (!fileName) {
+                    const uriParts = uri.split('/');
+                    fileName = uriParts[uriParts.length - 1] || 'profile.jpg';
+                }
+                if (!mimeType) {
+                    const extParts = fileName.split('.');
+                    const ext = extParts.length > 1 ? extParts[extParts.length - 1].toLowerCase() : 'jpg';
+                    mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+                }
+
+                formData.append('profilePicture', {
+                    uri: uri,
+                    name: fileName,
+                    type: mimeType,
+                } as any);
+
+                const picResponse = await fetchWithAuth(`${config.API_BASE_URL}/users/profile-picture`, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (picResponse.ok) {
+                    const picData = await picResponse.json();
+                    newProfilePictureUrl = picData.profileUrl;
+                } else {
+                    console.error('Failed to upload profile picture');
+                }
+            }
+
             const response = await fetchWithAuth(`${config.API_BASE_URL}/users/profile`, {
                 method: 'PUT',
                 headers: {
@@ -77,7 +120,12 @@ const EditProfileScreen = ({ navigation }: any) => {
                 // Update local storage
                 const storedUser = await AsyncStorage.getItem('user');
                 const user = storedUser ? JSON.parse(storedUser) : {};
-                const newUser = { ...user, ...updatedUser, full_name: updatedUser.full_name };
+                const newUser = {
+                    ...user,
+                    ...updatedUser,
+                    full_name: updatedUser.full_name,
+                    profile_picture_url: newProfilePictureUrl || updatedUser.profile_picture_url || user.profile_picture_url
+                };
                 await AsyncStorage.setItem('user', JSON.stringify(newUser));
 
                 Alert.alert('Success', 'Profile updated successfully!');
@@ -114,7 +162,41 @@ const EditProfileScreen = ({ navigation }: any) => {
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={{ flex: 1 }}
             >
-                <ScrollView contentContainerStyle={styles.scrollContent}>
+                <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
+                    {/* Profile Picture Upload */}
+                    <View style={styles.profilePicContainer}>
+                        <TouchableOpacity
+                            style={styles.profilePicWrapper}
+                            onPress={async () => {
+                                const result = await ImagePicker.launchImageLibraryAsync({
+                                    mediaTypes: ['images'],
+                                    allowsEditing: true,
+                                    aspect: [1, 1],
+                                    quality: 0.8,
+                                });
+
+                                if (!result.canceled && result.assets && result.assets.length > 0) {
+                                    setProfileImageAsset(result.assets[0]);
+                                }
+                            }}
+                        >
+                            {profileImageAsset || userData.profilePictureUrl ? (
+                                <Image
+                                    source={{ uri: profileImageAsset ? profileImageAsset.uri : userData.profilePictureUrl }}
+                                    style={styles.profileImage}
+                                />
+                            ) : (
+                                <View style={styles.placeholderImage}>
+                                    <User size={40} color={COLORS.primary} />
+                                </View>
+                            )}
+                            <View style={styles.editIconBadge}>
+                                <Camera size={14} color={COLORS.white} />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Full Name</Text>
                         <View style={styles.inputWrapper}>
@@ -227,6 +309,43 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         padding: SPACING.xl,
+        paddingBottom: 40,
+    },
+    profilePicContainer: {
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    profilePicWrapper: {
+        position: 'relative',
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+    },
+    profileImage: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+    },
+    placeholderImage: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: COLORS.inputBg,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    editIconBadge: {
+        position: 'absolute',
+        right: 0,
+        bottom: 0,
+        backgroundColor: COLORS.primary,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 3,
+        borderColor: COLORS.white,
     },
     inputGroup: {
         marginBottom: 20,

@@ -11,7 +11,8 @@ import {
     RefreshControl,
     Modal,
     Animated,
-    Dimensions
+    Dimensions,
+    Image
 } from 'react-native';
 import config from '../config';
 import { fetchWithAuth } from '../api/api';
@@ -237,7 +238,14 @@ const JobListingsScreen = ({ navigation }: any) => {
                                 activeOpacity={0.7}
                             >
                                 <View style={styles.jobCardHeader}>
-                                    <View style={{ flex: 1 }}>
+                                    <View style={styles.companyLogo}>
+                                        {job.logo_url ? (
+                                            <Image source={{ uri: job.logo_url }} style={styles.logoImage} />
+                                        ) : (
+                                            <Image source={require('../../assets/icon.png')} style={styles.logoImage} />
+                                        )}
+                                    </View>
+                                    <View style={{ flex: 1, marginLeft: 12 }}>
                                         <Text style={styles.jobTitle}>{job.title}</Text>
                                         <Text style={styles.companyName}>{job.company}</Text>
                                     </View>
@@ -428,6 +436,25 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'flex-start',
         marginBottom: 20,
+    },
+    companyLogo: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: COLORS.inputBg,
+        justifyContent: 'center',
+        alignItems: 'center',
+        overflow: 'hidden',
+    },
+    logoImage: {
+        width: 48,
+        height: 48,
+        resizeMode: 'cover',
+    },
+    companyLogoText: {
+        fontSize: 16,
+        fontWeight: '900',
+        color: COLORS.primary,
     },
     jobTitle: {
         fontSize: 18,
