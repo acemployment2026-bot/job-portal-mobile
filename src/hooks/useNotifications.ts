@@ -5,13 +5,17 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import client from '../api/client';
 
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-    }),
-});
+const isExpoGo = Constants.appOwnership === 'expo';
+
+if (!isExpoGo) {
+    Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+        }),
+    });
+}
 
 export const useNotifications = () => {
     const [expoPushToken, setExpoPushToken] = useState<string>('');
@@ -20,6 +24,8 @@ export const useNotifications = () => {
     const responseListener = useRef<Notifications.Subscription>();
 
     useEffect(() => {
+        if (isExpoGo) return;
+
         registerForPushNotificationsAsync().then(token => {
             if (token) {
                 setExpoPushToken(token);
@@ -27,20 +33,26 @@ export const useNotifications = () => {
             }
         });
 
-        notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-            setNotification(notification);
-        });
+        if (typeof Notifications.addNotificationReceivedListener === 'function') {
+            notificationListener.current = Notifications.addNotificationReceivedListener(n => {
+                setNotification(n);
+            });
+        }
 
-        responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-            console.log('Notification response:', response);
-        });
+        if (typeof Notifications.addNotificationResponseReceivedListener === 'function') {
+            responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+                console.log('Notification response:', response);
+            });
+        }
 
         return () => {
-            if (notificationListener.current) {
-                Notifications.removeNotificationSubscription(notificationListener.current);
-            }
-            if (responseListener.current) {
-                Notifications.removeNotificationSubscription(responseListener.current);
+            if (typeof Notifications.removeNotificationSubscription === 'function') {
+                if (notificationListener.current) {
+                    Notifications.removeNotificationSubscription(notificationListener.current);
+                }
+                if (responseListener.current) {
+                    Notifications.removeNotificationSubscription(responseListener.current);
+                }
             }
         };
     }, []);
@@ -48,9 +60,8 @@ export const useNotifications = () => {
     const saveTokenToServer = async (token: string) => {
         try {
             await client.post('/api/users/save-push-token', { pushToken: token });
-            console.log('Push token saved to server');
         } catch (error) {
-            console.error('Error saving push token to server:', error);
+            console.error('Error saving push token:', error);
         }
     };
 
@@ -61,40 +72,32 @@ async function registerForPushNotificationsAsync() {
     let token;
 
     if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-            name: 'default',
-            importance: Notifications.AndroidImportance.MAX,
-            vibrationPattern: [0, 250, 250, 250],
-            lightColor: '#FF231F7C',
-        });
+        try {
+            await Notifications.setNotificationChannelAsync('default', {
+                name: 'default',
+                importance: Notifications.AndroidImportance.MAX,
+                vibrationPattern: [0, 250, 250, 250],
+                lightColor: '#FF231F7C',
+            });
+        } catch (_) {}
     }
 
     if (Device.isDevice) {
-        const { status: existingStatus } = await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
-        if (existingStatus !== 'granted') {
-            const { status } = await Notifications.requestPermissionsAsync();
-            finalStatus = status;
-        }
-        if (finalStatus !== 'granted') {
-            console.log('Failed to get push token for push notification!');
-            return;
-        }
-
         try {
+            const { status: existingStatus } = await Notifications.getPermissionsAsync();
+            let finalStatus = existingStatus;
+            if (existingStatus !== 'granted') {
+                const { status } = await Notifications.requestPermissionsAsync();
+                finalStatus = status;
+            }
+            if (finalStatus !== 'granted') return;
+
             const projectId =
                 Constants?.expoConfig?.extra?.eas?.projectId ??
                 Constants?.easConfig?.projectId;
 
-            token = (await Notifications.getExpoPushTokenAsync({
-                projectId: projectId,
-            })).data;
-            console.log('Expo Push Token:', token);
-        } catch (e) {
-            console.log('Error getting expo push token', e);
-        }
-    } else {
-        console.log('Must use physical device for Push Notifications');
+            token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+        } catch (_) {}
     }
 
     return token;

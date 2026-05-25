@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+﻿import React, { useEffect } from 'react';
 import { StyleSheet, View, Text, ActivityIndicator, Image } from 'react-native';
 import { COLORS, SIZES, SPACING } from '../constants/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -46,7 +46,7 @@ const SplashScreen = ({ navigation }: any) => {
                         resizeMode="contain"
                     />
                 </View>
-                <Text style={styles.title}>Job Search India</Text>
+                <Text style={styles.title}>Ace Employement</Text>
                 <Text style={styles.subtitle}>India's Premier Careers App</Text>
             </View>
             <View style={styles.footer}>

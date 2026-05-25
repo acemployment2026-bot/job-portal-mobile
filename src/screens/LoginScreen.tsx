@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
     StyleSheet,
     View,
@@ -104,7 +104,7 @@ const LoginScreen = ({ navigation }: any) => {
                             />
                         </View>
                         <Text style={styles.title}>Welcome Back</Text>
-                        {/* <Text style={styles.subtitle}>Job Search India</Text> */}
+                        {/* <Text style={styles.subtitle}>Ace Employement</Text> */}
                     </View>
 
                     {/* Form Area */}

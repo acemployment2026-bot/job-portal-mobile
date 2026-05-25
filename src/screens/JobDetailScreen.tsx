@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import {
     StyleSheet,
     View,
@@ -33,7 +33,7 @@ const { width } = Dimensions.get('window');
 const JobDetailScreen = ({ navigation, route }: any) => {
     const job = route.params?.job || {
         title: 'Frontend Developer – Chennai OMR',
-        company: 'Job Search India',
+        company: 'Ace Employement',
         location: 'Chennai, IN',
         salary: '₹10 - 15 LPA',
         experience: '3-5 Years',

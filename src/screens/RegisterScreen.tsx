@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
     StyleSheet,
     View,
@@ -85,7 +85,7 @@ const RegisterScreen = ({ navigation }: any) => {
                     {/* Header */}
                     <View style={styles.header}>
                         <Text style={styles.title}>Create Account</Text>
-                        <Text style={styles.subtitle}>Join Job Search India</Text>
+                        <Text style={styles.subtitle}>Join Ace Employement</Text>
                     </View>
 
                     {/* Form */}

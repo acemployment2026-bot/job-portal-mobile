@@ -8,11 +8,11 @@ import {
     KeyboardAvoidingView,
     Platform,
     ScrollView,
-    Dimensions
+    Dimensions,
+    Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SPACING } from '../constants/theme';
-import { Wallet } from 'lucide-react-native';
 
 import { Alert, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -109,13 +109,11 @@ const OtpLoginScreen = ({ navigation }: any) => {
                 >
                     {/* Header */}
                     <View style={styles.header}>
-                        <View style={styles.logoBox}>
-                            <Wallet size={32} color={COLORS.white} />
-                        </View>
-                        <View style={styles.headerTextCol}>
-                            <Text style={styles.brandTitle}>ACE FINS</Text>
-                            <Text style={styles.brandSubtitle}>TECH SOLUTION</Text>
-                        </View>
+                        <Image
+                            source={require('../../assets/logo.png')}
+                            style={styles.logoImage}
+                            resizeMode="contain"
+                        />
                     </View>
 
                     <View style={styles.content}>
@@ -213,31 +211,12 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     header: {
-        flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 60,
+        marginBottom: 40,
     },
-    logoBox: {
-        width: 60,
-        height: 60,
-        backgroundColor: COLORS.primary,
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 15,
-    },
-    headerTextCol: {
-        justifyContent: 'center',
-    },
-    brandTitle: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: COLORS.primary,
-    },
-    brandSubtitle: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: COLORS.secondary,
+    logoImage: {
+        width: 120,
+        height: 120,
     },
     content: {
         alignItems: 'center',
