@@ -22,7 +22,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.jobportal.mobile",
-      "versionCode": 3,
+      "versionCode": 4,
       "permissions": [
         "INTERNET"
       ]
