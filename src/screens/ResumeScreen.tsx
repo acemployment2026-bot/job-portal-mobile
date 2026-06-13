@@ -82,9 +82,7 @@ const ResumeScreen = ({ navigation }: any) => {
                 name: asset.name,
                 type: asset.mimeType || 'application/pdf',
             } as any);
-            formData.append('userId', user.id);
-
-            formData.append('userId', user.id);
+            formData.append('userId', String(user.id));
 
             const response = await fetchWithAuth(`${config.API_BASE_URL}/resume/upload`, {
                 method: 'POST',
